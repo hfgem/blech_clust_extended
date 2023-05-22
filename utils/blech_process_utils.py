@@ -674,7 +674,7 @@ class spike_handler():
         Extract waveforms from filtered electrode
         """
         slices, spike_times, polarity, mean_val, threshold = \
-                clust.extract_waveforms_abu(
+                clust.extract_waveforms_hannah(
                         self.filt_el,
                         spike_snapshot=[self.params_dict['spike_snapshot_before'],
                                      self.params_dict['spike_snapshot_after']],
