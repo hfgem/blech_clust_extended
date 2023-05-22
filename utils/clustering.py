@@ -62,22 +62,29 @@ def extract_waveforms_hannah(filt_el, spike_snapshot = [0.5, 1.0],
 								    threshold_mult = 5.0):
 		#Sliding thresholding
 		len_filt_el = len(filt_el)
-		sec_samples = 60*sampling_rate #60 seconds in samples
+		sec_samples = 60*5*sampling_rate #5 minutes in samples
 		start_times = np.arange(0,len_filt_el-sec_samples,sec_samples)
-		negative = []
-		positive = []
+		#negative = []
+		#positive = []
+		mean_vals = []
+		threshold_vals = []
 		for s_i in range(len(start_times)):
 			s_t = start_times[s_i]
 			filt_el_clip = np.array(filt_el)[max(s_t,0):min(s_t+sec_samples,len_filt_el)]
 			m_clip = np.mean(filt_el_clip)
-			th_clip = threshold_mult*np.std(filt_el_clip)
-			neg_clip = np.where(filt_el_clip <= m_clip-th_clip)[0]
-			pos_clip = np.where(filt_el_clip >= m_clip+th_clip)[0]
-			negative.extend(list(neg_clip+s_t))
-			positive.extend(list(pos_clip+s_t))
+			th_clip = threshold_mult*np.median(np.abs(filt_el)/0.6745)
+			#neg_clip = np.where(filt_el_clip <= m_clip-th_clip)[0]
+			#pos_clip = np.where(filt_el_clip >= m_clip+th_clip)[0]
+			#negative.extend(list(neg_clip+s_t))
+			#positive.extend(list(pos_clip+s_t))
+			mean_vals.extend([m_clip])
+			threshold_vals.extend([th_clip])
 	
-		m = np.mean(filt_el)
-		th = threshold_mult*np.median(np.abs(filt_el)/0.6745)
+		m = min(mean_vals)
+		th = min(threshold_vals)
+		
+		negative = np.where(filt_el <= m-th)[0] 
+		positive = np.where(filt_el >= m+th)[0] 
 
 		# Marking breaks in detected threshold crossings 
 		neg_changes = np.concatenate(([0],np.where(np.diff(negative) > 1)[0]+1))
