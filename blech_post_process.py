@@ -280,9 +280,9 @@ while True:
             n_pc = 3
             data = np.zeros((len(this_cluster), n_pc + 3))  
             data[:,3:] = pca_slices[this_cluster,:n_pc]
-            data[:,0] = energy[this_cluster]/np.max(energy[this_cluster])
-            data[:,1] = np.abs(amplitudes[this_cluster])/\
-                    np.max(np.abs(amplitudes[this_cluster]))
+            data[:,0] = np.squeeze(energy[this_cluster]/np.max(energy[this_cluster]))
+            data[:,1] = np.squeeze(np.abs(amplitudes[this_cluster])/\
+                    np.max(np.abs(amplitudes[this_cluster])))
 
             # Cluster the data
             g = GaussianMixture(
