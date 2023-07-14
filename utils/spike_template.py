@@ -105,7 +105,7 @@ def spike_template_sort(all_spikes,sampling_rate,num_pts_left,num_pts_right,
 		plt.plot(new_template)
 		plt.title('Template #' + str(i))
 		good_i = list(np.array(remaining_ind)[list(np.where(score_2 < cut_val)[0])])
-		good_ind.append(good_i)
+		good_ind.extend(good_i)
 		remaining_ind = list(np.setdiff1d(remaining_ind,good_i))
 	fig.savefig(template_dir + 'template_matching_results.png',dpi=100)
 	plt.close(fig)
