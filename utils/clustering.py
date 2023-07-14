@@ -7,7 +7,7 @@ import pylab as plt
 from sklearn.decomposition import PCA
 from scipy.signal import fftconvolve
 from sklearn.cluster import KMeans
-import spike_template.py as st
+import utils.spike_template as st
 
 def get_filtered_electrode(data, freq = [300.0, 3000.0], sampling_rate = 30000.0):
 		el = 0.195*(data)
