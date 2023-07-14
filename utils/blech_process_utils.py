@@ -673,9 +673,11 @@ class spike_handler():
         """
         Extract waveforms from filtered electrode
         """
+        waveform_dir = f'{self.dir_name}/spike_waveforms/electrode{self.electrode_num:02}'
         slices, spike_times, polarity, mean_val, threshold = \
                 clust.extract_waveforms_hannah(
                         self.filt_el,
+						dir_name=waveform_dir,
                         spike_snapshot=[self.params_dict['spike_snapshot_before'],
                                      self.params_dict['spike_snapshot_after']],
                         sampling_rate=self.params_dict['sampling_rate'],

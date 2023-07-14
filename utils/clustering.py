@@ -7,6 +7,7 @@ import pylab as plt
 from sklearn.decomposition import PCA
 from scipy.signal import fftconvolve
 from sklearn.cluster import KMeans
+import spike_template.py as st
 
 def get_filtered_electrode(data, freq = [300.0, 3000.0], sampling_rate = 30000.0):
 		el = 0.195*(data)
@@ -57,15 +58,13 @@ def extract_waveforms_abu(filt_el, spike_snapshot = [0.5, 1.0],
 
 		return slices, spike_times[relevant_inds], polarity[relevant_inds], m, th
 
-def extract_waveforms_hannah(filt_el, spike_snapshot = [0.5, 1.0], 
+def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0], 
 								    sampling_rate = 30000.0,
 								    threshold_mult = 5.0):
 		#Sliding thresholding
 		len_filt_el = len(filt_el)
 		sec_samples = 60*5*sampling_rate #5 minutes in samples
 		start_times = np.arange(0,len_filt_el-sec_samples,sec_samples)
-		#negative = []
-		#positive = []
 		mean_vals = []
 		threshold_vals = []
 		for s_i in range(len(start_times)):
@@ -73,10 +72,6 @@ def extract_waveforms_hannah(filt_el, spike_snapshot = [0.5, 1.0],
 			filt_el_clip = np.array(filt_el)[max(s_t,0):min(s_t+sec_samples,len_filt_el)]
 			m_clip = np.mean(filt_el_clip)
 			th_clip = threshold_mult*np.median(np.abs(filt_el)/0.6745)
-			#neg_clip = np.where(filt_el_clip <= m_clip-th_clip)[0]
-			#pos_clip = np.where(filt_el_clip >= m_clip+th_clip)[0]
-			#negative.extend(list(neg_clip+s_t))
-			#positive.extend(list(pos_clip+s_t))
 			mean_vals.extend([m_clip])
 			threshold_vals.extend([th_clip])
 	
@@ -115,10 +110,22 @@ def extract_waveforms_hannah(filt_el, spike_snapshot = [0.5, 1.0],
 		relevant_inds = (before_inds > 0) * (after_inds < len(filt_el))
 		before_inds = before_inds[relevant_inds]
 		after_inds = after_inds[relevant_inds]
+		spike_times = spike_times[relevant_inds]
+		polarity = polarity[relevant_inds]
 		slices = np.array([filt_el[start:end] \
 				for start,end in zip(before_inds,after_inds)])
+			
+		# Template sort the spikes
+		cut_percentile = 25
+		#Returns only the template-match thresholded slices
+		slices, relevant_inds = st.spike_template_sort(slices,sampling_rate,needed_before,needed_after,
+								cut_percentile,dir_name)
+		before_inds = before_inds[relevant_inds]
+		after_inds = after_inds[relevant_inds]
+		spike_times = spike_times[relevant_inds]
+		polarity = polarity[relevant_inds]
 
-		return slices, spike_times[relevant_inds], polarity[relevant_inds], m, th
+		return slices, spike_times, polarity, m, th
 
 def extract_waveforms(filt_el, spike_snapshot = [0.5, 1.0], sampling_rate = 30000.0):
 		m = np.mean(filt_el)
@@ -290,3 +297,4 @@ def clusterGMM(data, n_clusters, n_iter, restarts, threshold):
 		predictions = g[best_fit].predict(data)
 
 		return g[best_fit], predictions, np.min(bayesian)
+
