@@ -1,13 +1,12 @@
 import numpy as np
-from scipy.signal import butter
-from scipy.signal import filtfilt
+from scipy.signal import butter, filtfilt, fftconvolve, find_peaks
 from scipy.interpolate import interp1d
 from sklearn.mixture import GaussianMixture
 import pylab as plt
 from sklearn.decomposition import PCA
-from scipy.signal import fftconvolve
 from sklearn.cluster import KMeans
 import utils.spike_template as st
+from tqdm import tqdm
 
 def get_filtered_electrode(data, freq = [300.0, 3000.0], sampling_rate = 30000.0):
 		el = 0.195*(data)
@@ -60,70 +59,74 @@ def extract_waveforms_abu(filt_el, spike_snapshot = [0.5, 1.0],
 
 def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0], 
 								    sampling_rate = 30000.0,
-								    threshold_mult = 5.0):
+								    threshold_mult = 5.0,
+									cut_percentile = 50):
+		print('Pulling peak times.')
 		#Sliding thresholding
+		print('\t Calculating Threshold')
 		len_filt_el = len(filt_el)
-		sec_samples = 60*5*sampling_rate #5 minutes in samples
+		sec_samples = int(60*5*sampling_rate) #5 minutes in samples
 		start_times = np.arange(0,len_filt_el-sec_samples,sec_samples)
 		mean_vals = []
 		threshold_vals = []
-		for s_i in range(len(start_times)):
+		for s_i in tqdm(range(len(start_times))):
 			s_t = start_times[s_i]
 			filt_el_clip = np.array(filt_el)[max(s_t,0):min(s_t+sec_samples,len_filt_el)]
 			m_clip = np.mean(filt_el_clip)
-			th_clip = threshold_mult*np.median(np.abs(filt_el)/0.6745)
+			th_clip = threshold_mult*np.median(np.abs(filt_el_clip)/0.6745)
 			mean_vals.extend([m_clip])
 			threshold_vals.extend([th_clip])
-	
+		#Percentile mean and threshold values
 		m = min(mean_vals)
 		th = min(threshold_vals)
-		
-		negative = np.where(filt_el <= m-th)[0] 
-		positive = np.where(filt_el >= m+th)[0] 
-
-		# Marking breaks in detected threshold crossings 
-		neg_changes = np.concatenate(([0],np.where(np.diff(negative) > 1)[0]+1))
-		pos_changes = np.concatenate(([0],np.where(np.diff(positive) > 1)[0]+1))
-		
-		# Mark indices to be extracted
-		neg_inds = [(negative[neg_changes[x]],negative[neg_changes[x+1]-1]) \
-				for x in range(len(neg_changes)-1)]
-		pos_inds = [(positive[pos_changes[x]],positive[pos_changes[x+1]-1]) \
-				for x in range(len(pos_changes)-1)]
-
-		# Mark the extremum of every threshold crossing
-		minima = [np.argmin(filt_el[start:(end+1)]) + start \
-				for start,end in neg_inds]
-		maxima = [np.argmax(filt_el[start:(end+1)]) + start \
-				for start,end in pos_inds]
-
-		polarity = np.concatenate(([-1]*len(minima),[1]*len(maxima)))
-
-		spike_times = np.concatenate((minima,maxima))
-
+		print('\t Selected mean = ' + str(round(m,3)) + '; Selected thresh = ' + str(round(th,3)))
+		#Find peaks crossing threshold in either direction and combine
+		peak_dist_min = np.ceil((1/1000)*sampling_rate) #Peaks must be at least 1 ms apart
+		minima = np.array(find_peaks(-1*(filt_el-m),height=th,distance=peak_dist_min)[0]) #indices of - peaks
+		maxima = np.array(find_peaks(filt_el-m,height=th,distance=peak_dist_min)[0]) #indices of + peaks
+		#Separately template match minima
+		print('\t Template sorting negative spikes')
+		#Set snippet parameters
 		needed_before = int((spike_snapshot[0] + 0.1)*(sampling_rate/1000.0))
 		needed_after = int((spike_snapshot[1]+ 0.1)*(sampling_rate/1000.0))
-		before_inds = spike_times - needed_before
-		after_inds = spike_times + needed_after
-
-		# Make sure event has required window around it
+		#Grab positive and negative spike waveforms and 'polarity'
+		before_inds = minima - needed_before
+		after_inds = minima + needed_after
 		relevant_inds = (before_inds > 0) * (after_inds < len(filt_el))
 		before_inds = before_inds[relevant_inds]
 		after_inds = after_inds[relevant_inds]
-		spike_times = spike_times[relevant_inds]
-		polarity = polarity[relevant_inds]
-		slices = np.array([filt_el[start:end] \
+		minima = minima[relevant_inds]
+		minima_slices = np.array([filt_el[start:end] \
 				for start,end in zip(before_inds,after_inds)])
-			
-		# Template sort the spikes
-		cut_percentile = 25
 		#Returns only the template-match thresholded slices
-		slices, relevant_inds = st.spike_template_sort(slices,sampling_rate,needed_before,needed_after,
+		minima_slices, relevant_inds = st.spike_template_sort(minima_slices,'min',sampling_rate,needed_before,needed_after,
 								cut_percentile,dir_name)
+		minima = minima[relevant_inds]
+		
+		#Separately threshold maxima
+		print('\t Template sorting positive spikes')
+		#Set snippet parameters
+		needed_before = int((spike_snapshot[0] + 0.1)*(sampling_rate/1000.0))
+		needed_after = int((spike_snapshot[1]+ 0.1)*(sampling_rate/1000.0))
+		#Grab positive and negative spike waveforms and 'polarity'
+		before_inds = maxima - needed_before
+		after_inds = maxima + needed_after
+		relevant_inds = (before_inds > 0) * (after_inds < len(filt_el))
 		before_inds = before_inds[relevant_inds]
 		after_inds = after_inds[relevant_inds]
-		spike_times = spike_times[relevant_inds]
-		polarity = polarity[relevant_inds]
+		maxima = maxima[relevant_inds]
+		maxima_slices = np.array([filt_el[start:end] \
+				for start,end in zip(before_inds,after_inds)])
+		#Returns only the template-match thresholded slices
+		maxima_slices, relevant_inds = st.spike_template_sort(maxima_slices,'max',sampling_rate,needed_before,needed_after,
+								cut_percentile,dir_name)
+		maxima = maxima[relevant_inds]
+		
+		#Combine thresholded results
+		slices = np.concatenate([minima_slices,maxima_slices])
+		spike_times = np.concatenate((minima,maxima))
+		polarity = np.concatenate(([-1]*len(minima),[1]*len(maxima)))
+		print('\t Total number of peaks = ' + str(len(spike_times)))
 
 		return slices, spike_times, polarity, m, th
 

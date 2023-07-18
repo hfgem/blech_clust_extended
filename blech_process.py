@@ -43,8 +43,6 @@ import numpy as np
 # Also allows reusing the same sorting sheets across runs
 np.random.seed(0)
 
-from utils.blech_utils import imp_metadata
-
 
 ############################################################
 # Load Data
@@ -116,7 +114,7 @@ fig= bpu.gen_window_plots(
     spike_set.mean_val,
     spike_set.threshold,
 )
-fig.savefig(f'./Plots/{electrode_num:02}/bandapass_trace_snippets.png',
+fig.savefig(f'./Plots/{electrode_num:02}/bandpass_trace_snippets.png',
             bbox_inches='tight', dpi=300)
 plt.close(fig)
 ############################################################
