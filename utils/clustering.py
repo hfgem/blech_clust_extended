@@ -9,8 +9,9 @@ import utils.spike_template as st
 from tqdm import tqdm
 
 def get_filtered_electrode(data, freq = [300.0, 3000.0], sampling_rate = 30000.0):
-		el = 0.195*(data)
-		m, n = butter(2, [2.0*freq[0]/sampling_rate, 2.0*freq[1]/sampling_rate], btype = 'bandpass') 
+		el = 0.195*(data) #convert to microvolts
+		m, n = butter(5, freq, btype='bandpass', fs=sampling_rate, output='ba')
+		#m, n = butter(2, [2.0*freq[0]/sampling_rate, 2.0*freq[1]/sampling_rate], btype = 'bandpass') 
 		filt_el = filtfilt(m, n, el)
 		return filt_el
 
@@ -65,7 +66,7 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		#Sliding thresholding
 		print('\t Calculating Threshold')
 		len_filt_el = len(filt_el)
-		sec_samples = int(60*5*sampling_rate) #2.5 minutes in samples
+		sec_samples = int(60*5*sampling_rate) #5 minutes in samples
 		start_times = np.arange(0,len_filt_el-sec_samples,sec_samples)
 		threshold_vals = []
 		for s_i in tqdm(range(len(start_times))):

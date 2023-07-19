@@ -3,6 +3,7 @@ import utils.clustering as clust
 # import subprocess
 from joblib import load
 from sklearn.mixture import GaussianMixture as gmm
+# from sklearn.cluster import KMeans
 from utils import blech_waveforms_datashader
 import subprocess
 from scipy.stats import zscore
@@ -69,6 +70,11 @@ class cluster_handler():
             max_iter=self.params_dict['num_iter'],
             n_init=self.params_dict['num_restarts'],
             tol=self.params_dict['thresh']).fit(train_set)
+#         model = KMeans(n_clusters=clusters, 
+# 					   random_state=np.random.randint(100),
+# 					   n_init= self.params_dict['num_restarts'],
+# 					   max_iter=self.params_dict['num_iter'],
+# 					   tol=self.params_dict['thresh']).fit(train_set)
         return model
 
     def get_cluster_labels(self, data, model):
@@ -583,6 +589,7 @@ class electrode_handler():
             freq=[self.params_dict['bandpass_lower_cutoff'],
                   self.params_dict['bandpass_upper_cutoff']],
             sampling_rate=self.params_dict['sampling_rate'],)
+        
         # Delete raw electrode recording from memory
         del self.raw_el
 

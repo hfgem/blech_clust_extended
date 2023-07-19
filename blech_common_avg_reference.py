@@ -71,10 +71,10 @@ for group in range(num_groups):
     # and divide by number of electrodes to get the average    
     for electrode_name in tqdm(CAR_electrodes[group]):
         electrode_ind = raw_electrodes_map[electrode_name]
+		#Note, data has not been converted to microvolts yet at this point
         common_average_reference[group,:] += raw_electrodes[electrode_ind][:]
-    # Average the voltage data across electrodes by dividing by the number 
+    # Average the voltage data across electrodes by dividing by the number
     # of electrodes in this group
-    print(float(len(CAR_electrodes[group])))
     common_average_reference[group, :] /= float(len(CAR_electrodes[group]))
 
 print("Common average reference for {:d} groups calculated".format(num_groups))
@@ -93,7 +93,7 @@ for electrode in tqdm(raw_electrodes):
         # Subtract the common average reference for that group from the 
         # voltage data of the electrode
         referenced_data = electrode[:] - common_average_reference[group]
-
+			  
         # First remove the node with this electrode's data
         hf5.remove_node(f"/raw/electrode{electrode_num:02}")
 
