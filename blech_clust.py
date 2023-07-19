@@ -46,9 +46,11 @@ if len(h5_search):
     print(f'HDF5 file found...Using file {hdf5_name}')
     hf5 = tables.open_file(hdf5_name, 'r+')
 else:
-    hdf5_name = str(os.path.dirname(dir_name)).split('/')[-1]+'.h5'
-    print(f'No HDF5 found...Creating file {hdf5_name}')
-    hf5 = tables.open_file(hdf5_name, 'w', title=hdf5_name[-1])
+	if dir_name[-1] != '/':
+		dir_name = dir_name + '/' #On Mac the directory pulled doesn't always end in /
+	hdf5_name = str(os.path.dirname(dir_name)).split('/')[-1]+'.h5'
+	print(f'No HDF5 found...Creating file {hdf5_name}')
+	hf5 = tables.open_file(hdf5_name, 'w', title=hdf5_name[-1])
 
 group_list = ['raw', 'raw_emg', 'digital_in', 'digital_out']
 for this_group in group_list:

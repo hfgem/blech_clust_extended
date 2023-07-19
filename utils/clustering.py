@@ -60,30 +60,27 @@ def extract_waveforms_abu(filt_el, spike_snapshot = [0.5, 1.0],
 def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0], 
 								    sampling_rate = 30000.0,
 								    threshold_mult = 5.0,
-									cut_percentile = 50):
+									cut_percentile = 25):
 		print('Pulling peak times.')
 		#Sliding thresholding
 		print('\t Calculating Threshold')
 		len_filt_el = len(filt_el)
-		sec_samples = int(60*5*sampling_rate) #5 minutes in samples
+		sec_samples = int(60*5*sampling_rate) #2.5 minutes in samples
 		start_times = np.arange(0,len_filt_el-sec_samples,sec_samples)
-		mean_vals = []
 		threshold_vals = []
 		for s_i in tqdm(range(len(start_times))):
 			s_t = start_times[s_i]
 			filt_el_clip = np.array(filt_el)[max(s_t,0):min(s_t+sec_samples,len_filt_el)]
-			m_clip = np.mean(filt_el_clip)
 			th_clip = threshold_mult*np.median(np.abs(filt_el_clip)/0.6745)
-			mean_vals.extend([m_clip])
 			threshold_vals.extend([th_clip])
 		#Percentile mean and threshold values
-		m = min(mean_vals)
+		m = 0 #Assuming data cleaning worked properly
 		th = min(threshold_vals)
-		print('\t Selected mean = ' + str(round(m,3)) + '; Selected thresh = ' + str(round(th,3)))
+		print('\t Selected thresh = ' + str(round(th,3)))
 		#Find peaks crossing threshold in either direction and combine
 		peak_dist_min = np.ceil((1/1000)*sampling_rate) #Peaks must be at least 1 ms apart
-		minima = np.array(find_peaks(-1*(filt_el-m),height=th,distance=peak_dist_min)[0]) #indices of - peaks
-		maxima = np.array(find_peaks(filt_el-m,height=th,distance=peak_dist_min)[0]) #indices of + peaks
+		minima = np.array(find_peaks(-1*(filt_el),height=th)[0]) #indices of - peaks
+		maxima = np.array(find_peaks(filt_el,height=th)[0]) #indices of + peaks
 		#Separately template match minima
 		print('\t Template sorting negative spikes')
 		#Set snippet parameters
