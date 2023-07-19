@@ -63,33 +63,19 @@ print("Calculating common average reference for {:d} groups".format(num_groups))
 common_average_reference = np.zeros((num_groups, raw_electrodes[0][:].shape[0]))
 print('Calculating mean values')
 for group in range(num_groups):
-	print('Processing Group {}'.format(group))
-	# Stack up the voltage data from all the electrodes that need 
-	# to be averaged across in this CAR group   
-	# In hindsight, don't stack up all the data, it is a huge memory waste. 
-	# Instead first add up the voltage values from each electrode to the same array 
-	# and divide by number of electrodes to get the average    
-	data = []
-	for electrode_name in tqdm(CAR_electrodes[group]):
-		electrode_ind = raw_electrodes_map[electrode_name]
-		data.append(list(raw_electrodes[electrode_ind][:]))
-	data = np.array(data)
-	total_time = len(data[0])
-	chunk = int(np.ceil(total_time/10000))
-	start_times = np.arange(stop = total_time,step = chunk)
-	common_average_group = np.zeros(total_time)
-	for t in tqdm.tqdm(range(len(start_times))):
-		s_t = start_times[t]
-		data_chunk = data[:,s_t:s_t+chunk]
-		#Median Subtraction
-		#med = np.median(data_chunk,0)
-		#cleaned_chunk = data_chunk - med
-		#Mean Subtraction
-		mean = np.mean(data_chunk,0)
-		common_average_group[:,s_t:s_t+chunk] = mean
+    print('Processing Group {}'.format(group))
+    # Stack up the voltage data from all the electrodes that need 
+    # to be averaged across in this CAR group   
+    # In hindsight, don't stack up all the data, it is a huge memory waste. 
+    # Instead first add up the voltage values from each electrode to the same array 
+    # and divide by number of electrodes to get the average    
+    for electrode_name in tqdm(CAR_electrodes[group]):
+        electrode_ind = raw_electrodes_map[electrode_name]
+        common_average_reference[group,:] += raw_electrodes[electrode_ind][:]
     # Average the voltage data across electrodes by dividing by the number 
     # of electrodes in this group
-	common_average_reference[group, :] = common_average_group
+    print(float(len(CAR_electrodes[group])))
+    common_average_reference[group, :] /= float(len(CAR_electrodes[group]))
 
 print("Common average reference for {:d} groups calculated".format(num_groups))
 
