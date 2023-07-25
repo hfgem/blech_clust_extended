@@ -1,6 +1,7 @@
 {
     "waveform_threshold" : 5,
     "max_clusters": 7,
+    "clust_type": "gmm",
     "num_iter": 1000,
     "thresh": 0.0001,
     "num_restarts": 10,

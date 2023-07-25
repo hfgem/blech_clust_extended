@@ -6,11 +6,8 @@
 import tables
 import numpy as np
 import os
-import easygui
 import sys
 from tqdm import tqdm
-import glob
-import json
 from utils.blech_utils import imp_metadata
 
 # Get name of directory with the data files
@@ -60,7 +57,8 @@ raw_electrodes_map = {
 
 # First get the common average references by averaging across the electrodes picked for each group
 print("Calculating common average reference for {:d} groups".format(num_groups))
-common_average_reference = np.zeros((num_groups, raw_electrodes[0][:].shape[0]))
+rec_len = raw_electrodes[0][:].shape[0]
+common_average_reference = np.zeros((num_groups, rec_len))
 print('Calculating mean values')
 for group in range(num_groups):
     print('Processing Group {}'.format(group))
@@ -69,13 +67,29 @@ for group in range(num_groups):
     # In hindsight, don't stack up all the data, it is a huge memory waste. 
     # Instead first add up the voltage values from each electrode to the same array 
     # and divide by number of electrodes to get the average    
+    electrode_data = np.zeros((len(CAR_electrodes[group]),rec_len))
     for electrode_name in tqdm(CAR_electrodes[group]):
         electrode_ind = raw_electrodes_map[electrode_name]
 		#Note, data has not been converted to microvolts yet at this point
-        common_average_reference[group,:] += raw_electrodes[electrode_ind][:]
+        electrode_data[electrode_ind,:] = raw_electrodes[electrode_ind][:]
+		#common_average_reference[group,:] += raw_electrodes[electrode_ind][:]
+	#Perform common average referencing on the majority similar data (in chunks)
+    chunk = 10000
+    chunk_starts = np.ceil(np.linspace(0,rec_len,chunk))
+    for c_i in tqdm(chunk_starts):
+		   c_start = int(max(c_i,0))
+		   c_end = int(min(c_i+chunk,rec_len))
+		   data_chunk = electrode_data[:,c_start:c_end]
+		   mean_vec = np.mean(data_chunk,0)
+		   std_vec = np.std(data_chunk,0)
+		   pos_dev_mat = np.ones(np.shape(data_chunk))*(mean_vec + 3*std_vec)
+		   neg_dev_mat =  np.ones(np.shape(data_chunk))*(mean_vec - 3*std_vec)
+		   match_vals = np.sum((neg_dev_mat <= data_chunk)*(data_chunk <= pos_dev_mat),1)
+		   cutoff = np.percentile(match_vals,90) #Keep only 90th percentile datasets for common average reference
+		   keep_vals = match_vals <= cutoff
+		   common_average_reference[group,c_start:c_end] = np.mean(data_chunk[keep_vals,:])
     # Average the voltage data across electrodes by dividing by the number
     # of electrodes in this group
-    common_average_reference[group, :] /= float(len(CAR_electrodes[group]))
 
 print("Common average reference for {:d} groups calculated".format(num_groups))
 

@@ -4,7 +4,6 @@ import os
 import numpy as np
 import tqdm
 
-#todo: Separate functions for electrode, EMG, and dig-in channels
 def read_digins(hdf5_name, dig_in, dig_in_list): 
         hf5 = tables.open_file(hdf5_name, 'r+')
         # Read digital inputs, and append to the respective hdf5 arrays
@@ -20,7 +19,6 @@ def read_digins(hdf5_name, dig_in, dig_in_list):
         hf5.flush()
         hf5.close()
 		
-#todo: Separate functions for electrode, EMG, and dig-in channels
 def read_digins_single_file(hdf5_name, dig_in, dig_in_list): 
 	num_dig_ins = len(dig_in)
 	hf5 = tables.open_file(hdf5_name, 'r+')

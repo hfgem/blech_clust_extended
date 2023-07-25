@@ -7,6 +7,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import utils.spike_template as st
 from tqdm import tqdm
+import random
 
 def get_filtered_electrode(data, freq = [300.0, 3000.0], sampling_rate = 30000.0):
 		el = 0.195*(data) #convert to microvolts
@@ -61,7 +62,7 @@ def extract_waveforms_abu(filt_el, spike_snapshot = [0.5, 1.0],
 def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0], 
 								    sampling_rate = 30000.0,
 								    threshold_mult = 5.0,
-									cut_percentile = 25):
+									cut_percentile =50):
 		print('Pulling peak times.')
 		#Sliding thresholding
 		print('\t Calculating Threshold')
@@ -69,19 +70,30 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		sec_samples = int(60*5*sampling_rate) #5 minutes in samples
 		start_times = np.arange(0,len_filt_el-sec_samples,sec_samples)
 		threshold_vals = []
+		mean_vals = []
 		for s_i in tqdm(range(len(start_times))):
 			s_t = start_times[s_i]
 			filt_el_clip = np.array(filt_el)[max(s_t,0):min(s_t+sec_samples,len_filt_el)]
-			th_clip = threshold_mult*np.median(np.abs(filt_el_clip)/0.6745)
+			m_clip = np.mean(filt_el_clip)
+			#If the threshold is being calculated as resistant to outliers, so 
+			#should the mean, so we should be calculating median instead.
+			#m_clip = np.median(filt_el_clip)
+			mean_vals.extend([m_clip])
+			#th_clip = threshold_mult*np.median(np.abs(filt_el_clip)/0.6745)
+			#The above calculation comes from 'Robust Statistics' by B.D.Ripley
+			#http://web.archive.org/web/20120410072907/http://www.stats.ox.ac.uk/pub/StatMeth/Robust.pdf
+			#It's actually incorrectly written and should be:
+			th_clip = threshold_mult*np.median(np.abs(filt_el_clip-m_clip))/0.6745
 			threshold_vals.extend([th_clip])
 		#Percentile mean and threshold values
-		m = 0 #Assuming data cleaning worked properly
-		th = min(threshold_vals)
-		print('\t Selected thresh = ' + str(round(th,3)))
-		#Find peaks crossing threshold in either direction and combine
-		peak_dist_min = np.ceil((1/1000)*sampling_rate) #Peaks must be at least 1 ms apart
-		minima = np.array(find_peaks(-1*(filt_el),height=th)[0]) #indices of - peaks
-		maxima = np.array(find_peaks(filt_el,height=th)[0]) #indices of + peaks
+		m = np.median(mean_vals)
+		th = np.median(threshold_vals)
+		print('\t Selected mean = ' + str(round(m,3)) + '; Selected thresh = ' + str(round(th,3)))
+		#Fin/d peaks crossing threshold in either direction and combine
+		all_peaks = np.array(find_peaks(np.abs(filt_el-m),height=th,distance=(1/1000)*sampling_rate)[0])
+		minima = np.array(find_peaks(-1*(filt_el-m),height=th)[0]) #indices of - peaks
+		maxima = np.setdiff1d(all_peaks,minima) #This ensures the maxima are not too close to the minima
+		
 		#Separately template match minima
 		print('\t Template sorting negative spikes')
 		#Set snippet parameters
@@ -94,11 +106,28 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		before_inds = before_inds[relevant_inds]
 		after_inds = after_inds[relevant_inds]
 		minima = minima[relevant_inds]
-		minima_slices = np.array([filt_el[start:end] \
-				for start,end in zip(before_inds,after_inds)])
+		minima_slices = np.array([filt_el[before_inds[m_i]:after_inds[m_i]] for m_i in range(len(before_inds))])
 		#Returns only the template-match thresholded slices
-		minima_slices, relevant_inds = st.spike_template_sort(minima_slices,'min',sampling_rate,needed_before,needed_after,
-								cut_percentile,dir_name)
+		minima_slices, relevant_inds = st.spike_template_sort(minima_slices,'min',
+														sampling_rate,needed_before,needed_after,
+														cut_percentile,dir_name)
+		irrelevant_inds = list(np.setdiff1d(np.arange(len(minima)),relevant_inds))
+		#Plot example good and bad waveforms
+		num_plot = 10
+		keep_plot = random.sample(relevant_inds,num_plot)
+		not_keep_plot = random.sample(irrelevant_inds,num_plot)
+		fig = plt.figure(figsize=(10,20))
+		for p_i in range(num_plot):
+			plt.subplot(num_plot,2,p_i*2+1)
+			plt.plot(filt_el[minima[keep_plot[p_i]]-25:minima[keep_plot[p_i]]+25])
+			plt.title('Good')
+		for p_i in range(num_plot):
+			plt.subplot(num_plot,2,p_i*2+2)
+			plt.plot(filt_el[minima[not_keep_plot[p_i]]-25:minima[not_keep_plot[p_i]]+25])
+			plt.title('Bad')
+		fig.savefig(dir_name + '/good_bad_min_waveforms.png',bbox_inches='tight')
+		plt.close('all')
+		#Keep only relevant waveforms
 		minima = minima[relevant_inds]
 		
 		#Separately threshold maxima
@@ -113,11 +142,27 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		before_inds = before_inds[relevant_inds]
 		after_inds = after_inds[relevant_inds]
 		maxima = maxima[relevant_inds]
-		maxima_slices = np.array([filt_el[start:end] \
-				for start,end in zip(before_inds,after_inds)])
+		maxima_slices = np.array([filt_el[before_inds[m_i]:after_inds[m_i]] for m_i in range(len(before_inds))])
 		#Returns only the template-match thresholded slices
-		maxima_slices, relevant_inds = st.spike_template_sort(maxima_slices,'max',sampling_rate,needed_before,needed_after,
-								cut_percentile,dir_name)
+		maxima_slices, relevant_inds = st.spike_template_sort(maxima_slices,'max',
+														sampling_rate,needed_before,needed_after,
+														cut_percentile,dir_name)
+		irrelevant_inds = list(np.setdiff1d(np.arange(len(maxima)),relevant_inds))
+		#Plot example good and bad waveforms
+		num_plot = 10
+		keep_plot = random.sample(relevant_inds,num_plot)
+		not_keep_plot = random.sample(irrelevant_inds,num_plot)
+		fig = plt.figure(figsize=(10,20))
+		for p_i in range(num_plot):
+			plt.subplot(num_plot,2,p_i*2+1)
+			plt.plot(filt_el[maxima[keep_plot[p_i]]-25:maxima[keep_plot[p_i]]+25])
+			plt.title('Good')
+		for p_i in range(num_plot):
+			plt.subplot(num_plot,2,p_i*2+2)
+			plt.plot(filt_el[maxima[not_keep_plot[p_i]]-25:maxima[not_keep_plot[p_i]]+25])
+			plt.title('Bad')
+		fig.savefig(dir_name + '/good_bad_max_waveforms.png',bbox_inches='tight')
+		plt.close('all')
 		maxima = maxima[relevant_inds]
 		
 		#Combine thresholded results
@@ -267,35 +312,3 @@ def implement_pca(scaled_slices):
 		pca = PCA()
 		pca_slices = pca.fit_transform(scaled_slices)   
 		return pca_slices, pca.explained_variance_ratio_
-
-def clusterKMeans(data, n_clusters, n_iter, restarts, threshold):
-    kmeans = KMeans(n_clusters = n_clusters, 
-				    n_init = restarts,
-				    max_iter = n_iter,
-				    tol = threshold).fit(data)
-    return kmeans.labels_
-
-def clusterGMM(data, n_clusters, n_iter, restarts, threshold):
-		
-
-		g = []
-		bayesian = []
-
-		for i in range(restarts):
-				g.append(GaussianMixture(n_components = n_clusters, covariance_type = 'full', tol = threshold, random_state = i, max_iter = n_iter))
-				#g.append(GaussianMixture(n_components = n_clusters,
-				#    covariance_type = 'diag', tol = threshold, random_state = i, max_iter = n_iter))
-				g[-1].fit(data)
-				if g[-1].converged_:
-						bayesian.append(g[-1].bic(data))
-				else:
-						del g[-1]
-
-		#print len(akaike)
-		bayesian = np.array(bayesian)
-		best_fit = np.where(bayesian == np.min(bayesian))[0][0]
-		
-		predictions = g[best_fit].predict(data)
-
-		return g[best_fit], predictions, np.min(bayesian)
-

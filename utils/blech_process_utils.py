@@ -3,7 +3,7 @@ import utils.clustering as clust
 # import subprocess
 from joblib import load
 from sklearn.mixture import GaussianMixture as gmm
-# from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans
 from utils import blech_waveforms_datashader
 import subprocess
 from scipy.stats import zscore
@@ -65,16 +65,20 @@ class cluster_handler():
         """
         Cluster waveforms
         """
-        model = gmm(
-            n_components=clusters,
-            max_iter=self.params_dict['num_iter'],
-            n_init=self.params_dict['num_restarts'],
-            tol=self.params_dict['thresh']).fit(train_set)
-#         model = KMeans(n_clusters=clusters, 
-# 					   random_state=np.random.randint(100),
-# 					   n_init= self.params_dict['num_restarts'],
-# 					   max_iter=self.params_dict['num_iter'],
-# 					   tol=self.params_dict['thresh']).fit(train_set)
+        
+        if self.params_dict['clust_type'] == 'kmeans':
+	        model = KMeans(n_clusters=clusters, 
+						   random_state=np.random.randint(100),
+						   n_init= self.params_dict['num_restarts'],
+						   max_iter=self.params_dict['num_iter'],
+						   tol=self.params_dict['thresh']).fit(train_set)
+        else:
+	        model = gmm(
+	            n_components=clusters,
+	            max_iter=self.params_dict['num_iter'],
+	            n_init=self.params_dict['num_restarts'],
+	            tol=self.params_dict['thresh']).fit(train_set)
+		
         return model
 
     def get_cluster_labels(self, data, model):
@@ -529,12 +533,19 @@ class classifier_handler():
         noise_transformed_train = noise_transformed[noise_train_set_inds]
 
         # Don't need multiple restarts, this is just for visualization, not actual clustering
-        gmm_model = gmm(
-            n_components=5,
-            max_iter=self.params_dict['num_iter'],
-            n_init=1,
-            tol=self.params_dict['thresh']).fit(noise_transformed_train)
-        predictions = gmm_model.predict(noise_transformed)
+        if self.params_dict['clust_type'] == 'kmeans':
+	        model = KMeans(n_clusters=5, 
+						   random_state=np.random.randint(100),
+						   n_init= self.params_dict['num_restarts'],
+						   max_iter=self.params_dict['num_iter'],
+						   tol=self.params_dict['thresh']).fit(noise_transformed_train)
+        else:
+	        model = gmm(
+	            n_components=5,
+	            max_iter=self.params_dict['num_iter'],
+	            n_init=1,
+	            tol=self.params_dict['thresh']).fit(noise_transformed_train)
+        predictions = model.predict(noise_transformed)
 
         clust_num = len(np.unique(predictions))
         fig, ax = plt.subplots(clust_num, 2, figsize=(20, 10), sharex='col')
@@ -590,7 +601,7 @@ class electrode_handler():
                   self.params_dict['bandpass_upper_cutoff']],
             sampling_rate=self.params_dict['sampling_rate'],)
         
-        # Delete raw electrode recording from memory
+        # Delete raw electrode recording from memory to save space
         del self.raw_el
 
     def adjust_to_sampling_rate(data, sampling_rate):
@@ -815,7 +826,8 @@ def return_cutoff_values(
 
     breach_rate = float(len(np.where(filt_el > voltage_cutoff)[0])
                         * int(sampling_rate))/len(filt_el)
-    test_el = np.reshape(filt_el, (-1, sampling_rate))
+	#test_el is #seconds x #samples per seconds reshaping of filtered data
+    test_el = np.reshape(filt_el, (-1, sampling_rate)) #-1 is an "unspecified value" which is inferred
     breaches_per_sec = (test_el > voltage_cutoff).sum(axis=-1)
     secs_above_cutoff = (breaches_per_sec > 0).sum()
     if secs_above_cutoff == 0:

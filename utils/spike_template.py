@@ -46,12 +46,11 @@ def spike_template_sort(all_spikes,sort_type,sampling_rate,num_pts_left,num_pts_
 	chunk_inds = np.arange(0,num_spikes,chunk_size)
 	num_chunks = len(chunk_inds)
 	norm_spikes = np.zeros(np.shape(all_spikes)) #Storage matrix
-	num_peaks = np.zeros(num_spikes) #Storage vector
 	for c_i in tqdm(range(num_chunks)):
 		#Normalize data and grab number of peaks
 		chunk_start = chunk_inds[c_i]
 		chunk_end = min(chunk_start + chunk_size,num_spikes)
-		norm_spikes[chunk_start:chunk_end,:],num_peaks[chunk_start:chunk_end] = norm_and_num_mat(all_spikes[chunk_start:chunk_end,:],num_pts_left)
+		norm_spikes[chunk_start:chunk_end,:] = norm_spikes_func(all_spikes[chunk_start:chunk_end,:],num_pts_left)
 	
 	#Grab templates of spikes
 	print("\t Creating new templates.")
@@ -59,9 +58,8 @@ def spike_template_sort(all_spikes,sort_type,sampling_rate,num_pts_left,num_pts_
 	#Template distance scores
 	spike_mat = np.multiply(np.ones(np.shape(norm_spikes)),spike_template)
 	dist = np.sqrt(np.sum(np.square(np.subtract(norm_spikes,spike_mat)),1))
-	score = dist*num_peaks
-	percentile = np.percentile(score,cut_percentile)
-	cutoff_value = percentile
+	score=dist
+	cutoff_value = np.percentile(score,cut_percentile/2)
 	new_template_waveform_ind = list(spike_inds[list(np.where(score < cutoff_value)[0])])
 	new_template = np.mean(norm_spikes[new_template_waveform_ind,:],axis=0)
 	#Plot a histogram of the scores and save to the template_matching dir
@@ -70,7 +68,7 @@ def spike_template_sort(all_spikes,sort_type,sampling_rate,num_pts_left,num_pts_
 	#Calculate new template distance scores
 	spike_mat = np.multiply(np.ones(np.shape(norm_spikes)),new_template)
 	dist_2 = np.sqrt(np.sum(np.square(np.subtract(norm_spikes,spike_mat)),1))
-	score_2 = dist_2*num_peaks
+	score_2=dist_2
 	percentile = np.percentile(score_2,cut_percentile)
 	#Create subplot to plot histogram and percentile cutoff
 	plt.subplot(2,1,1)
@@ -122,13 +120,13 @@ def generate_templates(sampling_rate,sort_type,num_pts_left,num_pts_right):
 @jit(forceobj=True)
 def norm_and_num_mat(mat,peak_ind):
 	norm_spike_chunk =  norm_spikes_func(mat,peak_ind) #Normalize the data
-	num_peak_chunk = np.apply_along_axis(num_peaks_func,1,norm_spike_chunk)
+	num_peak_chunk = np.apply_along_axis(num_peaks_func,1,norm_spike_chunk) #Calculate the number of peaks
 	return norm_spike_chunk, num_peak_chunk
 	
 
 @jit(forceobj=True)
 def num_peaks_func(vec):
-	return len(find_peaks(vec,0.3)[0]) + len(find_peaks(-1*vec,0.3)[0])
+	return len(find_peaks(vec,0.2)[0]) + len(find_peaks(-1*vec,0.2)[0])
 
 
 @jit(forceobj=True)
