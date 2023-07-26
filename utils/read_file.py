@@ -4,20 +4,41 @@ import os
 import numpy as np
 import tqdm
 
-def read_digins(hdf5_name, dig_in, dig_in_list): 
+def read_digins(hdf5_name, dig_in, dig_in_list, sampling_rate): 
         hf5 = tables.open_file(hdf5_name, 'r+')
         # Read digital inputs, and append to the respective hdf5 arrays
         print('Reading dig-ins')
         atom = tables.IntAtom()
+        min_time = np.inf
+        max_time = 0
+        rec_len = 0
+        for i in dig_in:
+                dig_name = [d_n for d_n in dig_in_list if int(d_n.split('.')[-2][-2:]) == i]
+                inputs = np.fromfile(dig_name[0], 
+                                        dtype = np.dtype('uint16'))
+                times_i = np.where(inputs)
+                min_i = np.min(times_i)
+                max_i = np.max(times_i)
+                len_i = len(inputs[:])
+                if min_i < min_time:
+                        min_time = min_i
+                if max_i > max_time:
+                        max_time = max_i
+                if len_i > rec_len:
+                        rec_len = len_i
+        min_time = max(min_time - 60*sampling_rate,0)
+        max_time = min(max_time + 60*sampling_rate,rec_len)
         for i in dig_in:
                 dig_inputs = hf5.create_earray(\
                         '/digital_in', 'dig_in_%i' % i, atom, (0,))
                 dig_name = [d_n for d_n in dig_in_list if int(d_n.split('.')[-2][-2:]) == i]
                 inputs = np.fromfile(dig_name[0], 
                                         dtype = np.dtype('uint16'))
-                exec("hf5.root.digital_in.dig_in_"+str(i)+".append(inputs[:])")
+                exec("hf5.root.digital_in.dig_in_"+str(i)+".append(inputs[min_time:max_time])")
         hf5.flush()
         hf5.close()
+		
+        return min_time, max_time
 		
 def read_digins_single_file(hdf5_name, dig_in, dig_in_list): 
 	num_dig_ins = len(dig_in)
@@ -43,7 +64,7 @@ def read_digins_single_file(hdf5_name, dig_in, dig_in_list):
 	hf5.close()
 
 # TODO: Remove exec statements throughout file
-def read_emg_channels(hdf5_name, electrode_layout_frame):
+def read_emg_channels(hdf5_name, electrode_layout_frame, min_time, max_time):
     # Read EMG data from amplifier channels
     hf5 = tables.open_file(hdf5_name, 'r+')
     atom = tables.IntAtom()
@@ -61,12 +82,12 @@ def read_emg_channels(hdf5_name, electrode_layout_frame):
             # Label raw_emg with electrode_ind so it's more easily identifiable
             el = hf5.create_earray('/raw_emg', f'emg{channel_ind:02}', atom, (0,))
             exec(f"hf5.root.raw_emg.emg{channel_ind:02}."\
-                    "append(data[:])")
+                    "append(data[min_time:max_time])")
             #emg_counter += 1
             hf5.flush()
     hf5.close()
 
-def read_electrode_channels(hdf5_name, electrode_layout_frame):
+def read_electrode_channels(hdf5_name, electrode_layout_frame, min_time, max_time):
     # Read EMG data from amplifier channels
     hf5 = tables.open_file(hdf5_name, 'r+')
     atom = tables.IntAtom()
@@ -85,7 +106,7 @@ def read_electrode_channels(hdf5_name, electrode_layout_frame):
             # Label raw_emg with electrode_ind so it's more easily identifiable
             el = hf5.create_earray('/raw', f'electrode{channel_ind:02}', atom, (0,))
             exec(f"hf5.root.raw.electrode{channel_ind:02}."\
-                    "append(data[:])")
+                    "append(data[min_time:max_time])")
             hf5.flush()
     hf5.close()
 	

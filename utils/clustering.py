@@ -74,10 +74,9 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		for s_i in tqdm(range(len(start_times))):
 			s_t = start_times[s_i]
 			filt_el_clip = np.array(filt_el)[max(s_t,0):min(s_t+sec_samples,len_filt_el)]
-			m_clip = np.mean(filt_el_clip)
 			#If the threshold is being calculated as resistant to outliers, so 
 			#should the mean, so we should be calculating median instead.
-			#m_clip = np.median(filt_el_clip)
+			m_clip = np.median(filt_el_clip)
 			mean_vals.extend([m_clip])
 			#th_clip = threshold_mult*np.median(np.abs(filt_el_clip)/0.6745)
 			#The above calculation comes from 'Robust Statistics' by B.D.Ripley
@@ -86,8 +85,8 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 			th_clip = threshold_mult*np.median(np.abs(filt_el_clip-m_clip))/0.6745
 			threshold_vals.extend([th_clip])
 		#Percentile mean and threshold values
-		m = np.median(mean_vals)
-		th = np.median(threshold_vals)
+		m = np.min(mean_vals)
+		th = np.min(threshold_vals)
 		print('\t Selected mean = ' + str(round(m,3)) + '; Selected thresh = ' + str(round(th,3)))
 		#Fin/d peaks crossing threshold in either direction and combine
 		all_peaks = np.array(find_peaks(np.abs(filt_el-m),height=th,distance=(1/1000)*sampling_rate)[0])
