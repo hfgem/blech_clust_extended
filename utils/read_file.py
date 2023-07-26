@@ -40,7 +40,7 @@ def read_digins(hdf5_name, dig_in, dig_in_list, sampling_rate):
 		
         return min_time, max_time
 		
-def read_digins_single_file(hdf5_name, dig_in, dig_in_list): 
+def read_digins_single_file(hdf5_name, dig_in, dig_in_list, sampling_rate): 
 	num_dig_ins = len(dig_in)
 	hf5 = tables.open_file(hdf5_name, 'r+')
 	# Read digital inputs, and append to the respective hdf5 arrays
@@ -58,10 +58,29 @@ def read_digins_single_file(hdf5_name, dig_in, dig_in_list):
 		end_ind = np.where(d_diff == -1*(n_i + 1))[0]
 		for s_i in range(len(start_ind)):
 			dig_inputs[n_i,start_ind[s_i]:end_ind[s_i]] = 1
+	min_time = np.inf
+	max_time = 0
+	rec_len = 0
+	for i in range(num_dig_ins):
+		times_i = np.where(dig_inputs[i,:])
+		min_i = np.min(times_i)
+		max_i = np.max(times_i)
+		len_i = len(dig_inputs[i,:])
+		if min_i < min_time:
+			min_time = min_i
+		if max_i > max_time:
+			max_time = max_i
+		if len_i > rec_len:
+			rec_len = len_i
+	min_time = max(min_time - 60*sampling_rate,0)
+	max_time = min(max_time + 60*sampling_rate,rec_len)
+	
 	for i in tqdm.tqdm(range(num_dig_ins)):		
-		exec("hf5.root.digital_in.dig_in_"+str(i)+".append(dig_inputs[i,:])")
+		exec("hf5.root.digital_in.dig_in_"+str(i)+".append(dig_inputs[i,min_time:max_time])")
 	hf5.flush()
 	hf5.close()
+	
+	return min_time, max_time
 
 # TODO: Remove exec statements throughout file
 def read_emg_channels(hdf5_name, electrode_layout_frame, min_time, max_time):
@@ -110,7 +129,9 @@ def read_electrode_channels(hdf5_name, electrode_layout_frame, min_time, max_tim
             hf5.flush()
     hf5.close()
 	
-def read_electrode_emg_channels_single_file(hdf5_name, electrode_layout_frame, electrodes_list, num_recorded_samples, emg_channels):
+def read_electrode_emg_channels_single_file(hdf5_name, electrode_layout_frame, 
+											electrodes_list, num_recorded_samples, 
+											emg_channels, min_time, max_time):
     # Read EMG data from amplifier channels
 	hf5 = tables.open_file(hdf5_name, 'r+')
 	atom = tables.IntAtom()
@@ -130,11 +151,11 @@ def read_electrode_emg_channels_single_file(hdf5_name, electrode_layout_frame, e
             #el = hf5.create_earray('/raw_emg', f'emg{emg_counter:02}', atom, (0,))
             # Label raw_emg with electrode_ind so it's more easily identifiable
 			el = hf5.create_earray('/raw', f'electrode{channel_ind:02}', atom, (0,))
-			exec(f"hf5.root.raw.electrode{channel_ind:02}.append(amp_reshape[num,:])")
+			exec(f"hf5.root.raw.electrode{channel_ind:02}.append(amp_reshape[num,min_time:max_time])")
 			hf5.flush()
 		elif not(emg_bool) and none_bool:
 			port = row.port
 			channel_ind = row.electrode_ind
 			el = hf5.create_earray('/raw_emg', f'emg{channel_ind:02}', atom, (0,))
-			exec(f"hf5.root.raw_emg.emg{channel_ind:02}.append(amp_reshape[num,:])")
+			exec(f"hf5.root.raw_emg.emg{channel_ind:02}.append(amp_reshape[num,min_time:max_time])")
 	hf5.close()

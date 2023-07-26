@@ -163,10 +163,10 @@ if file_type == ['one file per channel']:
     if len(emg_channels) > 0:
         read_file.read_emg_channels(hdf5_name, electrode_layout_frame, min_time, max_time)
 elif file_type == ['one file per signal type']:
-    read_file.read_digins_single_file(hdf5_name, dig_in, dig_in_list)
+    min_time, max_time = read_file.read_digins_single_file(hdf5_name, dig_in, dig_in_list)
     # This next line takes care of both electrodes and emgs
     read_file.read_electrode_emg_channels_single_file(
-        hdf5_name, electrode_layout_frame, electrodes_list, num_recorded_samples, emg_channels)
+        hdf5_name, electrode_layout_frame, electrodes_list, num_recorded_samples, emg_channels, min_time, max_time)
 
 # Write out template params file to directory if not present
 print(blech_clust_dir)
