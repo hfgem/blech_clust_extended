@@ -50,6 +50,7 @@ if args.dir_name is not None:
 else:
     metadata_handler = imp_metadata([])
 dir_name = metadata_handler.dir_name
+params = metadata_handler.params_dict
 #dir_name = easygui.diropenbox()
 os.chdir(dir_name)
 file_list = metadata_handler.file_list
@@ -132,7 +133,7 @@ while True:
             electrode_num_str, continue_bool = entry_checker(\
                     msg = 'Electrode number :: ',
                     check_func = str.isdigit,
-                    fail_response = 'Please enter an interger')
+                    fail_response = 'Please enter an integer')
 
             if continue_bool:
                 electrode_num = int(electrode_num_str)
@@ -141,8 +142,8 @@ while True:
 
             num_clusters_str, continue_bool = entry_checker(\
                     msg = 'Solution number :: ',
-                    check_func = lambda x: (str.isdigit(x) and (1<int(x)<=7)),
-                    fail_response = 'Please enter an interger')
+                    check_func = lambda x: (str.isdigit(x) and (1<int(x)<=params['max_clusters'])),
+                    fail_response = 'Please enter an integer')
             if continue_bool:
                 num_clusters = int(num_clusters_str)
             else:
