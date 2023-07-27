@@ -65,7 +65,7 @@ zscore_transform = FunctionTransformer(zscore_custom)
 log_transform = FunctionTransformer(np.log, validate=True)
 arcsinh_transform = FunctionTransformer(np.arcsinh, validate=True)
 
-pca_components = 3
+pca_components = 5
 
 pca_pipeline = Pipeline(
     steps=[
