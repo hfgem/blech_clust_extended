@@ -96,14 +96,15 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		minima = np.array(find_peaks(-1*(filt_el-m),height=th)[0]) #indices of - peaks
 		min_peak_heights = np.array([filt_el[minima[i]] for i in range(len(minima))])
 		min_peak_max_cutoff = np.percentile(min_peak_heights,10)
-		#Keep only the majority height range
-		relevant_inds = np.where(min_peak_heights >= min_peak_max_cutoff)
-		minima = minima[relevant_inds]
+		
 		
 		maxima = np.setdiff1d(all_peaks,minima) #This ensures the maxima are not too close to the minima
 		max_peak_heights = np.array([filt_el[maxima[i]] for i in range(len(maxima))])
 		max_peak_max_cutoff = np.percentile(max_peak_heights,90)
+		
 		#Keep only the majority height range
+		relevant_inds = np.where(min_peak_heights >= min_peak_max_cutoff)
+		minima = minima[relevant_inds]
 		relevant_inds = np.where(max_peak_heights <= max_peak_max_cutoff)
 		maxima = maxima[relevant_inds]
 		
