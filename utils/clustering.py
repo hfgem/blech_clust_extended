@@ -90,8 +90,32 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		print('\t Selected mean = ' + str(round(m,3)) + '; Selected thresh = ' + str(round(th,3)))
 		#Fin/d peaks crossing threshold in either direction and combine
 		all_peaks = np.array(find_peaks(np.abs(filt_el-m),height=th,distance=(1/1000)*sampling_rate)[0])
+		abs_peak_heights = np.array([filt_el[all_peaks[i]] for a_ in range(len(all_peaks))])
+		abs_peak_max_cutoff = np.percentile(abs_peak_heights,90)
+		
 		minima = np.array(find_peaks(-1*(filt_el-m),height=th)[0]) #indices of - peaks
+		min_peak_heights = np.array([filt_el[minima[i]] for a_ in range(len(minima))])
+		min_peak_max_cutoff = np.percentile(min_peak_heights,90)
 		maxima = np.setdiff1d(all_peaks,minima) #This ensures the maxima are not too close to the minima
+		max_peak_heights = np.array([filt_el[maxima[i]] for a_ in range(len(maxima))])
+		max_peak_max_cutoff = np.percentile(max_peak_heights,90)
+		
+		#Plot peak heights and 90th percentile cutoff
+		fig = plt.figure(figsize=(10,20))
+		plt.subplot(3,1,1)
+		plt.hist(abs_peak_heights)
+		plt.axvline(abs_peak_max_cutoff)
+		plt.title('Absolute Value of Signal')
+		plt.subplot(3,1,2)
+		plt.hist(min_peak_heights)
+		plt.axvline(min_peak_max_cutoff)
+		plt.title('Negative Deflections')
+		plt.subplot(3,1,2)
+		plt.hist(max_peak_heights)
+		plt.axvline(max_peak_max_cutoff)
+		plt.title('Positive Deflections')
+		fig.savefig(dir_name + '/peak_height_distribution.png',bbox_inches='tight')
+		plt.close('all')
 		
 		#Separately template match minima
 		print('\t Sorting negative spikes')
@@ -129,8 +153,8 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 # 		#Keep only relevant waveforms
 # 		minima = minima[relevant_inds]
 # 		
-# 		#Separately threshold maxima
- 		print('\t Sorting positive spikes')
+ 		#Separately threshold maxima
+		print('\t Sorting positive spikes')
 		#Set snippet parameters
 		needed_before = int((spike_snapshot[0] + 0.1)*(sampling_rate/1000.0))
 		needed_after = int((spike_snapshot[1]+ 0.1)*(sampling_rate/1000.0))
