@@ -85,8 +85,8 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 			th_clip = threshold_mult*np.median(np.abs(filt_el_clip-m_clip))/0.6745
 			threshold_vals.extend([th_clip])
 		#Percentile mean and threshold values
-		m = np.median(mean_vals)
-		th = np.median(threshold_vals)
+		m = min(mean_vals)
+		th = min(threshold_vals)
 		print('\t Selected mean = ' + str(round(m,3)) + '; Selected thresh = ' + str(round(th,3)))
 		#Fin/d peaks crossing threshold in either direction and combine
 		all_peaks = np.array(find_peaks(np.abs(filt_el-m),height=th,distance=(1/1000)*sampling_rate)[0])
