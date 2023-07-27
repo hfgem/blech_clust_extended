@@ -94,7 +94,7 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		maxima = np.setdiff1d(all_peaks,minima) #This ensures the maxima are not too close to the minima
 		
 		#Separately template match minima
-		print('\t Template sorting negative spikes')
+		print('\t Sorting negative spikes')
 		#Set snippet parameters
 		needed_before = int((spike_snapshot[0] + 0.1)*(sampling_rate/1000.0))
 		needed_after = int((spike_snapshot[1]+ 0.1)*(sampling_rate/1000.0))
@@ -106,31 +106,31 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		after_inds = after_inds[relevant_inds]
 		minima = minima[relevant_inds]
 		minima_slices = np.array([filt_el[before_inds[m_i]:after_inds[m_i]] for m_i in range(len(before_inds))])
-		#Returns only the template-match thresholded slices
-		minima_slices, relevant_inds = st.spike_template_sort(minima_slices,'min',
-														sampling_rate,needed_before,needed_after,
-														cut_percentile,dir_name)
-		irrelevant_inds = list(np.setdiff1d(np.arange(len(minima)),relevant_inds))
-		#Plot example good and bad waveforms
-		num_plot = 10
-		keep_plot = random.sample(relevant_inds,num_plot)
-		not_keep_plot = random.sample(irrelevant_inds,num_plot)
-		fig = plt.figure(figsize=(10,20))
-		for p_i in range(num_plot):
-			plt.subplot(num_plot,2,p_i*2+1)
-			plt.plot(filt_el[minima[keep_plot[p_i]]-25:minima[keep_plot[p_i]]+25])
-			plt.title('Good')
-		for p_i in range(num_plot):
-			plt.subplot(num_plot,2,p_i*2+2)
-			plt.plot(filt_el[minima[not_keep_plot[p_i]]-25:minima[not_keep_plot[p_i]]+25])
-			plt.title('Bad')
-		fig.savefig(dir_name + '/good_bad_min_waveforms.png',bbox_inches='tight')
-		plt.close('all')
-		#Keep only relevant waveforms
-		minima = minima[relevant_inds]
-		
-		#Separately threshold maxima
-		print('\t Template sorting positive spikes')
+# 		#Returns only the template-match thresholded slices
+# 		minima_slices, relevant_inds = st.spike_template_sort(minima_slices,'min',
+# 														sampling_rate,needed_before,needed_after,
+# 														cut_percentile,dir_name)
+# 		irrelevant_inds = list(np.setdiff1d(np.arange(len(minima)),relevant_inds))
+# 		#Plot example good and bad waveforms
+# 		num_plot = 10
+# 		keep_plot = random.sample(relevant_inds,num_plot)
+# 		not_keep_plot = random.sample(irrelevant_inds,num_plot)
+# 		fig = plt.figure(figsize=(10,20))
+# 		for p_i in range(num_plot):
+# 			plt.subplot(num_plot,2,p_i*2+1)
+# 			plt.plot(filt_el[minima[keep_plot[p_i]]-25:minima[keep_plot[p_i]]+25])
+# 			plt.title('Good')
+# 		for p_i in range(num_plot):
+# 			plt.subplot(num_plot,2,p_i*2+2)
+# 			plt.plot(filt_el[minima[not_keep_plot[p_i]]-25:minima[not_keep_plot[p_i]]+25])
+# 			plt.title('Bad')
+# 		fig.savefig(dir_name + '/good_bad_min_waveforms.png',bbox_inches='tight')
+# 		plt.close('all')
+# 		#Keep only relevant waveforms
+# 		minima = minima[relevant_inds]
+# 		
+# 		#Separately threshold maxima
+ 		print('\t Sorting positive spikes')
 		#Set snippet parameters
 		needed_before = int((spike_snapshot[0] + 0.1)*(sampling_rate/1000.0))
 		needed_after = int((spike_snapshot[1]+ 0.1)*(sampling_rate/1000.0))
@@ -143,27 +143,27 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		maxima = maxima[relevant_inds]
 		maxima_slices = np.array([filt_el[before_inds[m_i]:after_inds[m_i]] for m_i in range(len(before_inds))])
 		#Returns only the template-match thresholded slices
-		maxima_slices, relevant_inds = st.spike_template_sort(maxima_slices,'max',
-														sampling_rate,needed_before,needed_after,
-														cut_percentile,dir_name)
-		irrelevant_inds = list(np.setdiff1d(np.arange(len(maxima)),relevant_inds))
-		#Plot example good and bad waveforms
-		num_plot = 10
-		keep_plot = random.sample(relevant_inds,num_plot)
-		not_keep_plot = random.sample(irrelevant_inds,num_plot)
-		fig = plt.figure(figsize=(10,20))
-		for p_i in range(num_plot):
-			plt.subplot(num_plot,2,p_i*2+1)
-			plt.plot(filt_el[maxima[keep_plot[p_i]]-25:maxima[keep_plot[p_i]]+25])
-			plt.title('Good')
-		for p_i in range(num_plot):
-			plt.subplot(num_plot,2,p_i*2+2)
-			plt.plot(filt_el[maxima[not_keep_plot[p_i]]-25:maxima[not_keep_plot[p_i]]+25])
-			plt.title('Bad')
-		fig.savefig(dir_name + '/good_bad_max_waveforms.png',bbox_inches='tight')
-		plt.close('all')
-		maxima = maxima[relevant_inds]
-		
+# 		maxima_slices, relevant_inds = st.spike_template_sort(maxima_slices,'max',
+# 														sampling_rate,needed_before,needed_after,
+# 														cut_percentile,dir_name)
+# 		irrelevant_inds = list(np.setdiff1d(np.arange(len(maxima)),relevant_inds))
+# 		#Plot example good and bad waveforms
+# 		num_plot = 10
+# 		keep_plot = random.sample(relevant_inds,num_plot)
+# 		not_keep_plot = random.sample(irrelevant_inds,num_plot)
+# 		fig = plt.figure(figsize=(10,20))
+# 		for p_i in range(num_plot):
+# 			plt.subplot(num_plot,2,p_i*2+1)
+# 			plt.plot(filt_el[maxima[keep_plot[p_i]]-25:maxima[keep_plot[p_i]]+25])
+# 			plt.title('Good')
+# 		for p_i in range(num_plot):
+# 			plt.subplot(num_plot,2,p_i*2+2)
+# 			plt.plot(filt_el[maxima[not_keep_plot[p_i]]-25:maxima[not_keep_plot[p_i]]+25])
+# 			plt.title('Bad')
+# 		fig.savefig(dir_name + '/good_bad_max_waveforms.png',bbox_inches='tight')
+# 		plt.close('all')
+# 		maxima = maxima[relevant_inds]
+# 		
 		#Combine thresholded results
 		slices = np.concatenate([minima_slices,maxima_slices])
 		spike_times = np.concatenate((minima,maxima))
