@@ -90,14 +90,14 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		print('\t Selected mean = ' + str(round(m,3)) + '; Selected thresh = ' + str(round(th,3)))
 		#Fin/d peaks crossing threshold in either direction and combine
 		all_peaks = np.array(find_peaks(np.abs(filt_el-m),height=th,distance=(1/1000)*sampling_rate)[0])
-		abs_peak_heights = np.array([filt_el[all_peaks[i]] for a_ in range(len(all_peaks))])
+		abs_peak_heights = np.array([filt_el[all_peaks[i]] for i in range(len(all_peaks))])
 		abs_peak_max_cutoff = np.percentile(abs_peak_heights,90)
 		
 		minima = np.array(find_peaks(-1*(filt_el-m),height=th)[0]) #indices of - peaks
-		min_peak_heights = np.array([filt_el[minima[i]] for a_ in range(len(minima))])
+		min_peak_heights = np.array([filt_el[minima[i]] for i in range(len(minima))])
 		min_peak_max_cutoff = np.percentile(min_peak_heights,90)
 		maxima = np.setdiff1d(all_peaks,minima) #This ensures the maxima are not too close to the minima
-		max_peak_heights = np.array([filt_el[maxima[i]] for a_ in range(len(maxima))])
+		max_peak_heights = np.array([filt_el[maxima[i]] for i in range(len(maxima))])
 		max_peak_max_cutoff = np.percentile(max_peak_heights,90)
 		
 		#Plot peak heights and 90th percentile cutoff
