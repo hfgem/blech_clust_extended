@@ -110,7 +110,7 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot = [0.5, 1.0],
 		plt.hist(min_peak_heights)
 		plt.axvline(min_peak_max_cutoff)
 		plt.title('Negative Deflections')
-		plt.subplot(3,1,2)
+		plt.subplot(3,1,3)
 		plt.hist(max_peak_heights)
 		plt.axvline(max_peak_max_cutoff)
 		plt.title('Positive Deflections')
