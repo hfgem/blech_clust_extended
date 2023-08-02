@@ -175,7 +175,7 @@ spike_set.write_out_spike_data()
 
 # Set a threshold on how many datapoints are used to FIT the gmm
 # Run GMM, from 2 to max_clusters
-for cluster_num in range(2, params_dict['max_clusters']+1):
+for cluster_num in range(params_dict['min_clusters'], params_dict['max_clusters']+1):
     cluster_handler = bpu.cluster_handler(
             params_dict, 
             data_dir_name, 
