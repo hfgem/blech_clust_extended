@@ -6,11 +6,8 @@
 import tables
 import numpy as np
 import os
-import easygui
 import sys
 from tqdm import tqdm
-import glob
-import json
 from utils.blech_utils import imp_metadata
 
 # Get name of directory with the data files
@@ -50,6 +47,7 @@ for region,vals in zip(all_car_group_names, all_car_group_vals):
     print(f" {region} :: {vals}")
 
 # Pull out the raw electrode nodes of the HDF5 file
+print('Calculating common average reference for full recording.')
 raw_electrodes = hf5.list_nodes('/raw')
 # Sort electrodes (just in case) so we can index them directly
 sort_order = np.argsort([x.__str__() for x in raw_electrodes])
@@ -59,11 +57,12 @@ raw_electrodes_map = {
                 for num, electrode in enumerate(raw_electrodes)}
 
 # First get the common average references by averaging across the electrodes picked for each group
-print("Calculating common average reference for {:d} groups".format(num_groups))
-common_average_reference = np.zeros((num_groups, raw_electrodes[0][:].shape[0]))
-print('Calculating mean values')
+print("\tCalculating common average reference for {:d} groups".format(num_groups))
+rec_len = raw_electrodes[0][:].shape[0]
+common_average_reference = np.zeros((num_groups, rec_len))
+print('\tCalculating mean values')
 for group in range(num_groups):
-    print('Processing Group {}'.format(group))
+    print('\t\tProcessing Group {}'.format(group))
     # Stack up the voltage data from all the electrodes that need 
     # to be averaged across in this CAR group   
     # In hindsight, don't stack up all the data, it is a huge memory waste. 
@@ -76,11 +75,11 @@ for group in range(num_groups):
     # of electrodes in this group
     common_average_reference[group, :] /= float(len(CAR_electrodes[group]))
 
-print("Common average reference for {:d} groups calculated".format(num_groups))
+print("\tCommon average reference for {:d} groups calculated".format(num_groups))
 
 # Now run through the raw electrode data and 
 # subtract the common average reference from each of them
-print('Performing background subtraction')
+print('\tPerforming background subtraction')
 for electrode in tqdm(raw_electrodes):
         electrode_num = int(str.split(electrode._v_pathname, 'electrode')[-1])
         # Get the common average group number that this electrode belongs to
@@ -98,6 +97,61 @@ for electrode in tqdm(raw_electrodes):
 
         # Now make a new array replacing the node removed above with the referenced data
         hf5.create_array("/raw", f"electrode{electrode_num:02}", referenced_data)
+        hf5.flush()
+
+        del referenced_data
+		
+# Pull out the raw electrode nodes of the HDF5 file
+print('Calculating common average reference for taste segment of recording.')
+raw_electrodes = hf5.list_nodes('/raw_taste')
+# Sort electrodes (just in case) so we can index them directly
+sort_order = np.argsort([x.__str__() for x in raw_electrodes])
+raw_electrodes = [raw_electrodes[i] for i in sort_order]
+raw_electrodes_map = {
+        int(str.split(electrode._v_pathname, 'electrode')[-1]):num \
+                for num, electrode in enumerate(raw_electrodes)}
+
+# First get the common average references by averaging across the electrodes picked for each group
+print("\tCalculating common average reference for {:d} groups".format(num_groups))
+rec_len = raw_electrodes[0][:].shape[0]
+common_average_reference = np.zeros((num_groups, rec_len))
+print('\tCalculating mean values')
+for group in range(num_groups):
+    print('\t\tProcessing Group {}'.format(group))
+    # Stack up the voltage data from all the electrodes that need 
+    # to be averaged across in this CAR group   
+    # In hindsight, don't stack up all the data, it is a huge memory waste. 
+    # Instead first add up the voltage values from each electrode to the same array 
+    # and divide by number of electrodes to get the average    
+    for electrode_name in tqdm(CAR_electrodes[group]):
+        electrode_ind = raw_electrodes_map[electrode_name]
+        common_average_reference[group,:] += raw_electrodes[electrode_ind][:]
+    # Average the voltage data across electrodes by dividing by the number 
+    # of electrodes in this group
+    common_average_reference[group, :] /= float(len(CAR_electrodes[group]))
+
+print("\tCommon average reference for {:d} groups calculated".format(num_groups))
+
+# Now run through the raw electrode data and 
+# subtract the common average reference from each of them
+print('\tPerforming background subtraction')
+for electrode in tqdm(raw_electrodes):
+        electrode_num = int(str.split(electrode._v_pathname, 'electrode')[-1])
+        # Get the common average group number that this electrode belongs to
+        # IMPORTANT!
+        # We assume that each electrode belongs to only 1 common average reference group 
+        group = int([i for i in range(num_groups) \
+                if electrode_num in CAR_electrodes[i]][0])
+
+        # Subtract the common average reference for that group from the 
+        # voltage data of the electrode
+        referenced_data = electrode[:] - common_average_reference[group]
+
+        # First remove the node with this electrode's data
+        hf5.remove_node(f"/raw_taste/electrode{electrode_num:02}")
+
+        # Now make a new array replacing the node removed above with the referenced data
+        hf5.create_array("/raw_taste", f"electrode{electrode_num:02}", referenced_data)
         hf5.flush()
 
         del referenced_data

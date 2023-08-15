@@ -12,7 +12,6 @@ import shutil
 # Necessary blech_clust modules
 from utils import read_file
 from utils.blech_utils import entry_checker, imp_metadata
-from utils.blech_process_utils import path_handler
 
 # Get blech_clust path
 script_path = os.path.realpath(__file__)
@@ -46,11 +45,13 @@ if len(h5_search):
     print(f'HDF5 file found...Using file {hdf5_name}')
     hf5 = tables.open_file(hdf5_name, 'r+')
 else:
-    hdf5_name = str(os.path.dirname(dir_name)).split('/')[-1]+'.h5'
-    print(f'No HDF5 found...Creating file {hdf5_name}')
-    hf5 = tables.open_file(hdf5_name, 'w', title=hdf5_name[-1])
+	if dir_name[-1] != '/':
+		dir_name = dir_name + '/' #On Mac the directory pulled doesn't always end in /
+	hdf5_name = str(os.path.dirname(dir_name)).split('/')[-1]+'.h5'
+	print(f'No HDF5 found...Creating file {hdf5_name}')
+	hf5 = tables.open_file(hdf5_name, 'w', title=hdf5_name[-1])
 
-group_list = ['raw', 'raw_emg', 'digital_in', 'digital_out']
+group_list = ['raw', 'raw_taste', 'raw_emg', 'raw_emg_taste', 'digital_in', 'digital_out']
 for this_group in group_list:
     if '/'+this_group in hf5:
         hf5.remove_node('/', this_group, recursive=True)
@@ -66,7 +67,12 @@ dir_list = ['spike_waveforms',
             'spike_times',
             'clustering_results',
             'Plots',
-            'memory_monitor_clustering']
+            'memory_monitor_clustering',
+			'spike_waveforms_taste',
+			'spike_times_taste',
+			'clustering_results_taste',
+			'Plots_taste',
+			'memory_monitor_clustering_taste']
 dir_exists = [x for x in dir_list if os.path.exists(x)]
 recreate_msg = f'Following dirs are present :' + '\n' + f'{dir_exists}' + \
     '\n' + 'Overwrite dirs? (yes/y/n/no) ::: '
@@ -156,15 +162,15 @@ electrode_layout_frame = pd.read_csv(layout_path)
 
 # Read data files, and append to electrode arrays
 if file_type == ['one file per channel']:
-    read_file.read_digins(hdf5_name, dig_in, dig_in_list)
-    read_file.read_electrode_channels(hdf5_name, electrode_layout_frame)
+    min_time, max_time = read_file.read_digins(hdf5_name, dig_in, dig_in_list, sampling_rate)
+    read_file.read_electrode_channels(hdf5_name, electrode_layout_frame, min_time, max_time)
     if len(emg_channels) > 0:
-        read_file.read_emg_channels(hdf5_name, electrode_layout_frame)
+        read_file.read_emg_channels(hdf5_name, electrode_layout_frame, min_time, max_time)
 elif file_type == ['one file per signal type']:
-    read_file.read_digins_single_file(hdf5_name, dig_in, dig_in_list)
+    min_time, max_time = read_file.read_digins_single_file(hdf5_name, dig_in, dig_in_list, sampling_rate)
     # This next line takes care of both electrodes and emgs
     read_file.read_electrode_emg_channels_single_file(
-        hdf5_name, electrode_layout_frame, electrodes_list, num_recorded_samples, emg_channels)
+        hdf5_name, electrode_layout_frame, electrodes_list, num_recorded_samples, emg_channels, min_time, max_time)
 
 # Write out template params file to directory if not present
 print(blech_clust_dir)
@@ -197,22 +203,10 @@ not_emg_bool = not_none_bool.loc[
 ]
 bash_electrode_list = not_emg_bool.electrode_ind.values
 job_count = np.min((len(bash_electrode_list), int(num_cpu-2)))
-runner_path = os.path.join(
-    blech_clust_dir, 'blech_clust_jetstream_parallel1.sh')
-f = open(os.path.join(blech_clust_dir, 'blech_clust_jetstream_parallel.sh'), 'w')
-print(f"parallel -k -j {job_count} --noswap --load 100% --progress " +
-      "--memfree 4G --retry-failed " +
-      f"--joblog {dir_name}/results.log " +
-      f"bash {runner_path} " +\
-      f"::: {' '.join([str(x) for x in bash_electrode_list])}",
-      file=f)
-f.close()
 
-# Then produce the file that runs blech_process.py
-f = open(os.path.join(blech_clust_dir, 'blech_clust_jetstream_parallel1.sh'), 'w')
-print("export OMP_NUM_THREADS=1", file=f)
-blech_process_path = os.path.join(blech_clust_dir, 'blech_process.py')
-print(f"python {blech_process_path} $1", file=f)
+#Output a .csv of the non_emg_bool vals as well
+f = open(os.path.join(dir_name, 'electrode_list.csv'), 'w')
+print(f"{' '.join([str(x) for x in bash_electrode_list])}", file=f)
 f.close()
 
 # Dump the directory name where blech_process has to cd

@@ -7,6 +7,7 @@ from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.decomposition import PCA
 from utils.blech_process_utils import path_handler
+from utils.blech_utils import imp_metadata
 
 ############################################################
 # Figure out paths
@@ -16,7 +17,6 @@ data_dir_name = path_handler.data_dir
 ############################################################
 
 sys.path.append(blech_clust_dir)
-from utils.blech_utils import imp_metadata
 metadata_handler = imp_metadata([[], data_dir_name])
 
 params_dict = metadata_handler.params_dict
@@ -65,7 +65,7 @@ zscore_transform = FunctionTransformer(zscore_custom)
 log_transform = FunctionTransformer(np.log, validate=True)
 arcsinh_transform = FunctionTransformer(np.arcsinh, validate=True)
 
-pca_components = 3
+pca_components = 5
 
 pca_pipeline = Pipeline(
     steps=[

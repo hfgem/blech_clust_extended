@@ -25,26 +25,21 @@ Steps:
 # Imports
 ############################################################
 
-import os
+import os, json, sys
 os.environ['OMP_NUM_THREADS']='1'
 os.environ['MKL_NUM_THREADS']='1'
-
+import pylab as plt
+import numpy as np
 from utils.blech_utils import (
     imp_metadata,
 )
 import utils.blech_process_utils as bpu
 from utils import memory_monitor as mm
-import pylab as plt
-import json
-import sys
-import numpy as np
+import utils.blech_spike_features as bsf
 
 # Set seed to allow inter-run reliability
 # Also allows reusing the same sorting sheets across runs
 np.random.seed(0)
-
-from utils.blech_utils import imp_metadata
-
 
 ############################################################
 # Load Data
@@ -65,10 +60,10 @@ params_dict = metadata_handler.params_dict
 # Check if the directories for this electrode number exist -
 # if they do, delete them (existence of the directories indicates a
 # job restart on the cluster, so restart afresh)
-dir_list = [f'./Plots/{electrode_num:02}',
-            f'./spike_waveforms/electrode{electrode_num:02}',
-            f'./spike_times/electrode{electrode_num:02}',
-            f'./clustering_results/electrode{electrode_num:02}']
+dir_list = [f'./Plots_taste/{electrode_num:02}',
+            f'./spike_waveforms_taste/electrode{electrode_num:02}',
+            f'./spike_times_taste/electrode{electrode_num:02}',
+            f'./clustering_results_taste/electrode{electrode_num:02}']
 for this_dir in dir_list:
     bpu.ifisdir_rmdir(this_dir)
     os.makedirs(this_dir)
@@ -80,7 +75,8 @@ for this_dir in dir_list:
 electrode = bpu.electrode_handler(
                   metadata_handler.hdf5_name,
                   electrode_num,
-                  params_dict)
+                  params_dict,
+				  taste=True)
 
 electrode.filter_electrode()
 
@@ -99,8 +95,10 @@ electrode.cutoff_electrode()
 #############################################################
 
 # Extract spike times and waveforms from filtered data
-spike_set = bpu.spike_handler(electrode.filt_el, 
-                              params_dict, data_dir_name, electrode_num)
+spike_set = bpu.spike_handler(metadata_handler.hdf5_name,
+							  electrode.filt_el, 
+                              params_dict, data_dir_name, 
+							  electrode_num, taste=True)
 spike_set.extract_waveforms()
 
 ############################################################
@@ -116,7 +114,7 @@ fig= bpu.gen_window_plots(
     spike_set.mean_val,
     spike_set.threshold,
 )
-fig.savefig(f'./Plots/{electrode_num:02}/bandapass_trace_snippets.png',
+fig.savefig(f'./Plots_taste/{electrode_num:02}/bandpass_trace_snippets.png',
             bbox_inches='tight', dpi=300)
 plt.close(fig)
 ############################################################
@@ -128,48 +126,11 @@ del electrode
 # Slices are returned sorted by amplitude polaity
 spike_set.dejitter_spikes()
 
-############################################################
-# Load classifier if specificed
-classifier_params = json.load(
-    open(os.path.join(
-        blech_clust_dir,
-        'params/waveform_classifier_params.json'), 'r'))
+spike_set.extract_amplitudes()
+num_spikes = len(spike_set.amplitudes)
+cluster_num = int(max(min(np.ceil(num_spikes/5000),25),2))
 
-if classifier_params['use_classifier'] and \
-    classifier_params['use_neuRecommend']:
-    classifier_handler = bpu.classifier_handler(
-            data_dir_name, electrode_num, params_dict)
-    sys.path.append(classifier_handler.create_pipeline_path)
-    from feature_engineering_pipeline import *
-    classifier_handler.load_pipelines()
-    classifier_handler.classify_waveforms(
-            spike_set.slices_dejittered,
-            spike_set.times_dejittered,
-            )
-    classifier_handler.gen_plots()
-    classifier_handler.write_out_recommendations()
-
-    # throw_out_noise = True
-    if classifier_params['throw_out_noise']:
-        # Remaining data is now only spikes
-        slices_dejittered, times_dejittered, clf_prob = \
-            classifier_handler.pos_spike_dict.values()
-        spike_set.slices_dejittered = slices_dejittered
-        spike_set.times_dejittered = times_dejittered
-        classifier_handler.clf_prob = clf_prob
-        classifier_handler.clf_pred = clf_prob > classifier_handler.clf_threshold
-
-############################################################
-
-if classifier_params['use_neuRecommend']:
-    spike_set.extract_features(
-            classifier_handler.feature_pipeline,
-            classifier_handler.feature_names,
-            fitted_transformer=True,
-            )
-else:
-    import utils.blech_spike_features as bsf
-    spike_set.extract_features(
+spike_set.extract_features(
             bsf.feature_pipeline,
             bsf.feature_names,
             fitted_transformer=False,
@@ -177,28 +138,25 @@ else:
 
 spike_set.write_out_spike_data()
 
-
 # Set a threshold on how many datapoints are used to FIT the gmm
 # Run GMM, from 2 to max_clusters
-for cluster_num in range(2, params_dict['max_clusters']+1):
-    cluster_handler = bpu.cluster_handler(
+#for cluster_num in range(params_dict['min_clusters'], params_dict['max_clusters']+1):
+cluster_handler = bpu.cluster_handler(
             params_dict, 
             data_dir_name, 
             electrode_num,
             cluster_num,
-            spike_set)
-    cluster_handler.perform_prediction()
-    cluster_handler.remove_outliers(params_dict)
-    cluster_handler.save_cluster_labels()
-    cluster_handler.create_output_plots( 
+            spike_set,
+			taste=True,
+			unit_num=-1)
+cluster_handler.perform_prediction()
+cluster_handler.remove_outliers(params_dict)
+cluster_handler.save_cluster_labels()
+cluster_handler.create_output_plots( 
                             params_dict)
-    if classifier_params['use_classifier'] and \
-        classifier_params['use_neuRecommend']:
-        cluster_handler.create_classifier_plots(classifier_handler)
-
 
 # Make file for dumping info about memory usage
-f= open(f'./memory_monitor_clustering/{electrode_num:02}.txt', 'w')
+f= open(f'./memory_monitor_clustering_taste/{electrode_num:02}.txt', 'w')
 print(mm.memory_usage_resource(), file=f)
 f.close()
 print(f'Electrode {electrode_num} complete.')
