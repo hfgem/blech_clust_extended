@@ -37,7 +37,7 @@ pip install -r pip_requirements_base.txt            # Install pip requirements (
 5. bash bash_umap_spike_scatter.sh  
     - UMAP embedding of spikes for visualization of clusters, and generate spike-time rasters  
 
-6. python blech_post_process.sh  
+6. python blech_post_process.py 
     - Add selected units to HDF5 file for further processing  
 
 7. python blech_units_similarity.py  

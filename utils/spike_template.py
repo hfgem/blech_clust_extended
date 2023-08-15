@@ -18,8 +18,7 @@ from tqdm import tqdm
 from random import sample
 
 def spike_template_sort(all_spikes,sort_type,sampling_rate,num_pts_left,num_pts_right,
-						cut_percentile,unit_dir,
-						chunk_size = 100000):
+						cut_percentile,unit_dir,chunk_size = 100000,spike_template=np.empty(0)):
 	"""This function performs template-matching to pull out potential spikes.
 	INPUTS:
 		- all_spikes
@@ -53,40 +52,39 @@ def spike_template_sort(all_spikes,sort_type,sampling_rate,num_pts_left,num_pts_
 		norm_spikes[chunk_start:chunk_end,:] = norm_spikes_func(all_spikes[chunk_start:chunk_end,:],num_pts_left)
 	
 	#Grab templates of spikes
-	print("\t Creating new templates.")
-	spike_template = generate_templates(sampling_rate,sort_type,num_pts_left,num_pts_right)
+	if len(spike_template) == 0:
+		print("\t Creating new templates.")
+		spike_template = generate_templates(sampling_rate,sort_type,num_pts_left,num_pts_right)
+	else:
+		print("\t Rescaling template")
+		temp_height = max(np.abs(spike_template))
+		spike_template /= temp_height
 	#Template distance scores
 	spike_mat = np.multiply(np.ones(np.shape(norm_spikes)),spike_template)
-	dist = np.sqrt(np.sum(np.square(np.subtract(norm_spikes,spike_mat)),1))
-	score=dist
-	cutoff_value = np.percentile(score,cut_percentile/2)
-	new_template_waveform_ind = list(spike_inds[list(np.where(score < cutoff_value)[0])])
-	new_template = np.mean(norm_spikes[new_template_waveform_ind,:],axis=0)
+	score = np.sqrt(np.sum(np.square(np.subtract(norm_spikes,spike_mat)),1))
+	percentile = np.percentile(score,cut_percentile)
 	#Plot a histogram of the scores and save to the template_matching dir
 	print("\t Plotting and pulling best spikes.")
 	fig = plt.figure(figsize=(20,20))
 	#Calculate new template distance scores
-	spike_mat = np.multiply(np.ones(np.shape(norm_spikes)),new_template)
-	dist_2 = np.sqrt(np.sum(np.square(np.subtract(norm_spikes,spike_mat)),1))
-	score_2=dist_2
-	percentile = np.percentile(score_2,cut_percentile)
 	#Create subplot to plot histogram and percentile cutoff
 	plt.subplot(2,1,1)
-	plt.hist(score_2,150,label='Mean Template Similarity Scores')
+	plt.hist(score,150,label='Mean Template Similarity Scores')
 	plt.axvline(percentile,color = 'r', linestyle = '--', label='Cutoff Threshold')
 	plt.legend()
 	plt.xlabel('Score = distance*peak_count')
 	plt.ylabel('Number of occurrences')
 	plt.title('Scores in comparison to template')
 	plt.subplot(2,1,2)
-	plt.plot(new_template)
+	plt.plot(spike_template)
 	plt.title('Template waveform')
-	good_ind = list(spike_inds[list(np.where(score_2 < percentile)[0])])
+	good_ind = list(spike_inds[list(np.where(score < percentile)[0])])
 	fig.savefig(template_dir + '/template_matching_results_' + sort_type + '.png',dpi=100)
 	plt.close(fig)
 	potential_spikes = np.array([all_spikes[g_i] for g_i in good_ind])
 
 	return potential_spikes, good_ind
+
 	
 @jit(forceobj=True)
 def generate_templates(sampling_rate,sort_type,num_pts_left,num_pts_right):

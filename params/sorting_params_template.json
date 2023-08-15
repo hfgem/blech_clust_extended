@@ -15,6 +15,7 @@
     "bandpass_upper_cutoff": 3000,
     "spike_snapshot_before": 1,
     "spike_snapshot_after": 1.5,
+    "template_percentile": 50,
     "psth_params": {
         "durations": [
             500,
