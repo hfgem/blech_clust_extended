@@ -1,4 +1,4 @@
-# blech_clust
+# blech_clust_extended
 
 Python and R based code for clustering and sorting electrophysiology data
 recorded using the Intan RHD2132 chips.  Originally written for cortical
