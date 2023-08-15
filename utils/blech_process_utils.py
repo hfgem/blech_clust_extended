@@ -486,7 +486,6 @@ class spike_handler():
 		for key, path in zip(to_be_saved, save_paths):
 			np.save(path, locals()[key])
 
-
 def ifisdir_rmdir(dir_name):
 	if os.path.isdir(dir_name):
 		shutil.rmtree(dir_name)

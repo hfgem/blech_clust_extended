@@ -39,6 +39,9 @@ c, d = butter(2, 2.0*15.0/1000.0, 'lowpass')
 layout_path = glob.glob(os.path.join(dir_name,"*layout.csv"))[0]
 electrode_layout_frame = pd.read_csv(layout_path) 
 
+# Change CAR_group col to lower
+electrode_layout_frame['CAR_group'] = electrode_layout_frame['CAR_group'].str.lower()
+
 # Allow for multiple emg CAR groups
 wanted_rows = pd.DataFrame(
         [x for num,x in electrode_layout_frame.iterrows() \
