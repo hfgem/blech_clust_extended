@@ -17,51 +17,6 @@ def get_filtered_electrode(data, freq=[300.0, 3000.0], sampling_rate=30000.0):
 	filt_el = filtfilt(m, n, el)
 	return filt_el
 
-
-def extract_waveforms_abu(filt_el, spike_snapshot=[0.5, 1.0],
-						  sampling_rate=30000.0,
-						  threshold_mult=5.0):
-
-	m = np.mean(filt_el)
-	th = threshold_mult*np.median(np.abs(filt_el)/0.6745)
-
-	negative = np.where(filt_el <= m-th)[0]
-	positive = np.where(filt_el >= m+th)[0]
-	# Marking breaks in detected threshold crossings
-	neg_changes = np.concatenate(([0], np.where(np.diff(negative) > 1)[0]+1))
-	pos_changes = np.concatenate(([0], np.where(np.diff(positive) > 1)[0]+1))
-
-	# Mark indices to be extracted
-	neg_inds = [(negative[neg_changes[x]], negative[neg_changes[x+1]-1])
-				for x in range(len(neg_changes)-1)]
-	pos_inds = [(positive[pos_changes[x]], positive[pos_changes[x+1]-1])
-				for x in range(len(pos_changes)-1)]
-
-	# Mark the extremum of every threshold crossing
-	minima = [np.argmin(filt_el[start:(end+1)]) + start
-			  for start, end in neg_inds]
-	maxima = [np.argmax(filt_el[start:(end+1)]) + start
-			  for start, end in pos_inds]
-
-	polarity = np.concatenate(([-1]*len(minima), [1]*len(maxima)))
-
-	spike_times = np.concatenate((minima, maxima))
-
-	needed_before = int((spike_snapshot[0] + 0.1)*(sampling_rate/1000.0))
-	needed_after = int((spike_snapshot[1] + 0.1)*(sampling_rate/1000.0))
-	before_inds = spike_times - needed_before
-	after_inds = spike_times + needed_after
-
-	# Make sure event has required window around it
-	relevant_inds = (before_inds > 0) * (after_inds < len(filt_el))
-	before_inds = before_inds[relevant_inds]
-	after_inds = after_inds[relevant_inds]
-	slices = np.array([filt_el[start:end]
-					   for start, end in zip(before_inds, after_inds)])
-
-	return slices, spike_times[relevant_inds], polarity[relevant_inds], m, th
-
-
 def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot=[0.5, 1.0],
 							 sampling_rate=30000.0,
 							 threshold_mult=5.0):
@@ -90,7 +45,7 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot=[0.5, 1.0],
 	th = min(threshold_vals)
 	print('\t Selected mean = ' + str(round(m, 3)) +
 		  '; Selected thresh = ' + str(round(th, 3)))
-	# Fin/d peaks crossing threshold in either direction and combine
+	# Find peaks crossing threshold in either direction and combine
 	all_peaks = np.array(find_peaks(
 		np.abs(filt_el-m), height=th, distance=(1/1000)*sampling_rate)[0])
 	

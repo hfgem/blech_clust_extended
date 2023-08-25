@@ -12,7 +12,7 @@ interval, and then final post-processing of spikes pulled from the full recordin
 If stopped for any reason, the program will pick up where it left off using the state_tracker.csv file.
 """
 
-import os, subprocess, easygui, csv
+import os, subprocess, easygui, csv, itertools
 import multiprocessing
 
 def cont_func(next_step):
@@ -31,8 +31,8 @@ def cont_func(next_step):
 			print("Please try again. Incorrect entry.")
 	return keep_going
 
-def run_blech_process(e_i):
-	process_e = 'python blech_process.py ' + str(e_i)
+def run_blech_process(inputs):
+	process_e = 'python blech_process.py ' + str(inputs[0]) + ' ' + inputs[1]
 	os.system(process_e)
 
 if __name__ == '__main__':
@@ -115,7 +115,7 @@ if __name__ == '__main__':
 		print('Now beginning taste interval clustering of electrodes: ')
 		print(electrode_inds)
 		pool = multiprocessing.Pool(4)
-		pool.map(run_blech_process,electrode_inds)
+		pool.map(run_blech_process,zip(electrode_inds, itertools.repeat(directory)))
 	# 	for e_i in electrode_inds:
 	# 		process_e = 'python blech_process.py ' + str(e_i)
 	# 		os.system(process_e)
@@ -189,7 +189,8 @@ if __name__ == '__main__':
 			except:
 				print("Please try again. Incorrect entry.")
 		if reorg == 'y':
-			organize_units = 'python blech_units_organize.py ' + directory
+			script_dir = os.path.join('utils','blech_units_organize.py')
+			organize_units = 'python ' + script_dir + ' ' + directory
 			os.system(organize_units)
 		state_val += 1
 		with open(os.path.join(directory, 'state_tracker.csv'), 'w') as f:

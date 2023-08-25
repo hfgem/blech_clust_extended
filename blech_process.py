@@ -45,16 +45,13 @@ np.random.seed(0)
 # Load Data
 ############################################################
 
-# Read blech.dir, and cd to that directory
-path_handler = bpu.path_handler()
-blech_clust_dir = path_handler.blech_clust_dir
-data_dir_name = path_handler.data_dir
-
+# cd to passed directory of data
+electrode_num = int(sys.argv[1])
+data_dir_name = sys.argv[2]
 
 metadata_handler = imp_metadata([[], data_dir_name])
 os.chdir(metadata_handler.dir_name)
 
-electrode_num = int(sys.argv[1])
 params_dict = metadata_handler.params_dict
 
 # Check if the directories for this electrode number exist -
