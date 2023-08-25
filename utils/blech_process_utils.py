@@ -29,12 +29,7 @@ class path_handler():
 		self.home_dir = os.getenv('HOME')
 		file_path = os.path.abspath(__file__)
 		blech_clust_dir =  ('/').join(file_path.split('/')[:-2])
-		blech_dir_path = os.path.join(blech_clust_dir, 'blech.dir')
-		with open(blech_dir_path, 'r') as f:
-			lines = f.readlines()
-		dir_name = lines[0][:-1]
 		self.blech_clust_dir = blech_clust_dir
-		self.data_dir = dir_name
 
 class cluster_handler():
 	"""
@@ -382,8 +377,12 @@ class spike_handler():
 			std_waveform = np.std(waveforms[:],0)
 			mean_peak = mean_waveform[samples_before]
 			std_peak = std_waveform[samples_before]
-			thresh_min = mean_peak - std_peak
-			thresh_max = mean_peak + 3*std_peak
+			if mean_peak < 0:
+				thresh_min = mean_peak - 3*std_peak
+				thresh_max = mean_peak + std_peak
+			elif mean_peak > 0:
+				thresh_min = mean_peak - std_peak
+				thresh_max = mean_peak + 3*std_peak
 			slices, spike_times, polarity = \
 				clust.template_match_waveforms(self.filt_el,
 							spike_template=mean_waveform,
@@ -438,10 +437,10 @@ class spike_handler():
 		self.feature_names = feature_names
 		if fitted_transformer:
 			self.spike_features = feature_transformer.transform(
-				self.slices_dejittered)
+				self.slices_dejittered, self.dir_name)
 		else:
 			self.spike_features = feature_transformer.fit_transform(
-				self.slices_dejittered)
+				self.slices_dejittered, self.dir_name)
 
 	def write_out_spike_data(self):
 		"""
