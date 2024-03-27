@@ -106,7 +106,9 @@ if file_type == ['one file per signal type']:
     dig_in_list = ['digitalin.dat']
 elif file_type == ['one file per channel']:
     electrodes_list = [name for name in file_list if name.startswith('amp-')]
-    dig_in_list = [name for name in file_list if name.startswith('board-DI')]
+    dig_in_list = list(np.sort(np.array([name for name in file_list if name.startswith('board-DI')])))
+    keep_dig_ins = np.where(np.array(info_dict['dig_ins']['trial_counts']) > 0)[0]
+    dig_in_list = list(np.array(dig_in_list)[keep_dig_ins])
 
 # Use info file for port list calculation
 info_file = np.fromfile(dir_name + '/info.rhd', dtype=np.dtype('float32'))
@@ -135,7 +137,7 @@ if file_type == ['one file per channel']:
 elif file_type == ['one file per signal type']:
 
     print("\tOne file per SIGNAL Detected")
-    dig_in = np.arange(info_dict['dig_ins']['count'])
+    dig_in = np.arange(len(np.where(np.array(info_dict['dig_ins']['trial_counts']) > 0)[0]))
 
 check_str = f'ports used: {ports} \n sampling rate: {sampling_rate} Hz'\
             f'\n digital inputs on intan board: {dig_in}'

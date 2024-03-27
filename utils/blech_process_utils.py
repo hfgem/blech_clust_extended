@@ -378,11 +378,11 @@ class spike_handler():
 			mean_peak = mean_waveform[samples_before]
 			std_peak = std_waveform[samples_before]
 			if mean_peak < 0:
-				thresh_min = mean_peak - 3*std_peak
-				thresh_max = mean_peak + std_peak
-			elif mean_peak > 0:
-				thresh_min = mean_peak - std_peak
+				thresh_min = mean_peak - 5*std_peak
 				thresh_max = mean_peak + 3*std_peak
+			elif mean_peak > 0:
+				thresh_min = mean_peak - 3*std_peak
+				thresh_max = mean_peak + 5*std_peak
 			slices, spike_times, polarity = \
 				clust.template_match_waveforms(self.filt_el,
 							spike_template=mean_waveform,

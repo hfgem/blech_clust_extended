@@ -17,15 +17,16 @@ def read_digins(hdf5_name, dig_in, dig_in_list, sampling_rate):
 		inputs = np.fromfile(dig_name[0], 
 								dtype = np.dtype('uint16'))
 		times_i = np.where(inputs)
-		min_i = np.min(times_i)
-		max_i = np.max(times_i)
-		len_i = len(inputs[:])
-		if min_i < min_time:
-				min_time = min_i
-		if max_i > max_time:
-				max_time = max_i
-		if len_i > rec_len:
-				rec_len = len_i
+		if len(times_i) > 0: #Not all dig ins are used
+			min_i = np.min(times_i)
+			max_i = np.max(times_i)
+			len_i = len(inputs[:])
+			if min_i < min_time:
+					min_time = min_i
+			if max_i > max_time:
+					max_time = max_i
+			if len_i > rec_len:
+					rec_len = len_i
 	min_time = max(min_time - 60*sampling_rate,0)
 	max_time = min(max_time + 60*sampling_rate,rec_len)
 	for i in dig_in:
