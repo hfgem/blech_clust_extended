@@ -11,10 +11,7 @@ import pylab as plt
 import json
 # import sys
 import numpy as np
-import tables
-import os
-import shutil
-import matplotlib
+import tables, os, shutil, matplotlib, random
 import pandas as pd
 matplotlib.use('Agg')
 
@@ -366,23 +363,33 @@ class spike_handler():
 			sampling_rate = self.params_dict['sampling_rate']
 			spike_snapshot_before = self.params_dict['spike_snapshot_before'] #in ms
 			samples_before = int(sampling_rate/1000*spike_snapshot_before)
+			filt_el = self.filt_el
+			filt_el_std = np.std(filt_el)
+			del filt_el
 			#Grab waveforms from pre-clustered taste interval
 			hf5 = tables.open_file(self.hdf5_path, 'r+')
 			unit_descriptor = hf5.root.unit_descriptor
 			sorted_nodes = hf5.list_nodes('/sorted_units')
 			waveforms = sorted_nodes[self.unit_num].waveforms[:]
 			hf5.close()
+			#Overlay plot the taste interval waveforms
+			waveform_subset = np.array(random.sample(list(np.arange(len(waveforms))),1000))
+			plt.plot(waveforms[waveform_subset,:].T,alpha=0.05,color='b')
+			plt.savefig(waveform_dir + '/taste_waveforms.png')
 			#Pull out template waveform and threshold values
+			peak_vals = waveforms[:,samples_before]
+			peak_min = np.min(peak_vals)
+			peak_max = np.max(peak_vals)
 			mean_waveform = np.mean(waveforms[:],0)
-			std_waveform = np.std(waveforms[:],0)
+			std_waveform = np.abs(np.std(waveforms[:],0))
 			mean_peak = mean_waveform[samples_before]
 			std_peak = std_waveform[samples_before]
 			if mean_peak < 0:
-				thresh_min = mean_peak - 5*std_peak
-				thresh_max = mean_peak + 3*std_peak
+				thresh_min = peak_min - 3*std_peak
+				thresh_max = min(peak_max + 3*std_peak,-3*filt_el_std) #at least 2 std from signal mean
 			elif mean_peak > 0:
-				thresh_min = mean_peak - 3*std_peak
-				thresh_max = mean_peak + 5*std_peak
+				thresh_min = max(peak_min - 3*std_peak,3*filt_el_std)
+				thresh_max = peak_max + 3*std_peak
 			slices, spike_times, polarity = \
 				clust.template_match_waveforms(self.filt_el,
 							spike_template=mean_waveform,
@@ -540,7 +547,7 @@ def gen_window_plots(
 								 int(windows_in_data*(window_len * sampling_rate)),
 								 int(windows_in_data))
 	window_markers = np.array([int(x) for x in window_markers])
-	chosen_window_inds = np.vectorize(np.int)(np.sort(np.random.choice(
+	chosen_window_inds = np.vectorize(int)(np.sort(np.random.choice(
 		np.arange(windows_in_data), window_count)))
 	chosen_window_markers = [(window_markers[x-1], window_markers[x])
 							 for x in chosen_window_inds]

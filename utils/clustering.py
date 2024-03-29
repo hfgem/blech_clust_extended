@@ -107,7 +107,7 @@ def extract_waveforms_hannah(filt_el, dir_name, spike_snapshot=[0.5, 1.0],
 def template_match_waveforms(filt_el, spike_template, dir_name,
 							 spike_snapshot=[0.5, 1.0],
 							 sampling_rate=30000.0,
-							 thresh_min = 10,
+							 thresh_min = -200,
 							 thresh_max = 200,
 							 cut_percentile=50):
 	print('Pulling all waveforms in given range.')
