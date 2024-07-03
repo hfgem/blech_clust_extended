@@ -79,7 +79,7 @@ def waveforms_datashader(waveforms, x_values,
                     linewidth = 1, linestyle = '--', alpha = 0.5)
             ax.axhline(y_transform(-threshold), color ='red', 
                     linewidth = 1, linestyle = '--', alpha = 0.5)
-
+            ax.set_ylim([y_transform(-threshold-10),y_transform(threshold+10)])
         # Delete the dataframe
         del df, waveforms, new_waveforms
 

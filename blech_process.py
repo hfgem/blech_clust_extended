@@ -147,7 +147,7 @@ cluster_handler = bpu.cluster_handler(
 			taste=True,
 			unit_num=-1)
 cluster_handler.perform_prediction()
-cluster_handler.remove_outliers(params_dict)
+#cluster_handler.remove_outliers(params_dict)
 cluster_handler.save_cluster_labels()
 cluster_handler.create_output_plots( 
                             params_dict)
